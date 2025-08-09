@@ -1,0 +1,156 @@
+[user]
+    # Set your name and email (replace with your actual information)
+    name = Your Name
+    email = your.email@example.com
+
+[init]
+    defaultBranch = main
+
+[core]
+    editor = code --wait
+    autocrlf = input
+    safecrlf = true
+    excludesfile = ~/.gitignore_global
+
+[color]
+    ui = auto
+    branch = auto
+    diff = auto
+    status = auto
+
+[color "branch"]
+    current = yellow reverse
+    local = yellow
+    remote = green
+
+[color "diff"]
+    meta = yellow bold
+    frag = magenta bold
+    old = red bold
+    new = green bold
+
+[color "status"]
+    added = yellow
+    changed = green
+    untracked = cyan
+
+[alias]
+    # Basic shortcuts
+    st = status
+    co = checkout
+    br = branch
+    ci = commit
+    ca = commit -a
+    cm = commit -m
+    cam = commit -am
+    
+    # Useful shortcuts
+    unstage = reset HEAD --
+    last = log -1 HEAD
+    visual = !gitk
+    
+    # Enhanced log formats
+    lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+    lol = log --graph --decorate --pretty=oneline --abbrev-commit
+    lola = log --graph --decorate --pretty=oneline --abbrev-commit --all
+    
+    # Diff shortcuts
+    d = diff
+    ds = diff --staged
+    dt = difftool
+    
+    # Stash shortcuts
+    sl = stash list
+    sa = stash apply
+    ss = stash save
+    sp = stash pop
+    
+    # Branch management
+    ba = branch -a
+    bd = branch -d
+    bD = branch -D
+    
+    # Remote shortcuts
+    pu = push
+    pl = pull
+    puf = push --force-with-lease
+    
+    # Rebase shortcuts
+    rb = rebase
+    rbi = rebase -i
+    rbc = rebase --continue
+    rba = rebase --abort
+    
+    # Reset shortcuts
+    r = reset
+    r1 = reset HEAD^
+    r2 = reset HEAD^^
+    rh = reset --hard
+    rh1 = reset HEAD^ --hard
+    rh2 = reset HEAD^^ --hard
+    
+    # Workflow shortcuts
+    wip = !git add -A && git commit -m "WIP"
+    undo = reset HEAD~1 --mixed
+    amend = commit -a --amend
+    
+    # Information
+    aliases = config --get-regexp alias
+    who = shortlog -n -s --no-merges
+
+[push]
+    default = simple
+    followTags = true
+
+[pull]
+    rebase = false
+
+[merge]
+    tool = vscode
+    conflictstyle = diff3
+
+[mergetool "vscode"]
+    cmd = code --wait $MERGED
+
+[diff]
+    tool = vscode
+
+[difftool "vscode"]
+    cmd = code --wait --diff $LOCAL $REMOTE
+
+[rerere]
+    enabled = true
+
+[branch]
+    autosetupmerge = always
+    autosetuprebase = always
+
+[status]
+    showUntrackedFiles = all
+
+[help]
+    autocorrect = 1
+
+[fetch]
+    prune = true
+
+[tag]
+    forceSignAnnotated = false
+
+# Delta (enhanced diff viewer) configuration
+[pager]
+    diff = delta
+    log = delta
+    reflog = delta
+    show = delta
+
+[delta]
+    plus-style = "syntax #012800"
+    minus-style = "syntax #340001"
+    syntax-theme = Monokai Extended
+    navigate = true
+    light = false
+    line-numbers = true
+
+[interactive]
+    diffFilter = delta --color-only

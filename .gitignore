@@ -1,0 +1,47 @@
+# Git Workshop .gitignore
+
+# Progress tracking files
+.git_workshop_progress
+*.log
+
+# Shell history and temporary files
+.bash_history
+.zsh_history
+*.tmp
+*.temp
+
+# Editor temporary files
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup files
+*.backup
+*.bak
+.shell-backup-*
+
+# Node modules (if any JS tools are added)
+node_modules/
+npm-debug.log*
+
+# Python cache (if any Python tools are added)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
