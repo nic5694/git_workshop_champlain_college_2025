@@ -6,9 +6,19 @@
 export SHELL_PROFILE_NAME="poweruser"
 export SHELL_PROFILE_VERSION="1.0.0"
 
-# Load developer profile as base
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/developer.sh"
+# Load developer profile as base (robust for Bash and Zsh)
+if [ -n "$BASH_VERSION" ]; then
+    _PROFILE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" 2>/dev/null)" && pwd)"
+elif [ -n "$ZSH_VERSION" ]; then
+    _PROFILE_DIR="$(cd "$(dirname "${(%):-%N}" 2>/dev/null)" && pwd)"
+else
+    _PROFILE_DIR="$(cd "$(dirname "$0" 2>/dev/null)" && pwd)"
+fi
+if [ -f "$_PROFILE_DIR/../developer.sh" ]; then
+    . "$_PROFILE_DIR/../developer.sh"
+elif [ -f "$_PROFILE_DIR/developer.sh" ]; then
+    . "$_PROFILE_DIR/developer.sh"
+fi
 
 # Advanced aliases
 alias ll='ls -alF --color=auto'
@@ -127,9 +137,10 @@ alias gupv='git pull --rebase -v'
 alias gwch='git whatchanged -p --abbrev-commit --pretty=medium'
 alias gwip='git add -A; git rm $(git ls-files --deleted) 2> /dev/null; git commit -m "--wip--"'
 
-# Enhanced Git functions
+# Remove any alias for gf to avoid conflict with function
+unalias gf 2>/dev/null
 gf() {
-    if [[ "$#" != 0 ]]; then
+    if [ "$#" -ne 0 ]; then
         git flow "$@"
     else
         git flow

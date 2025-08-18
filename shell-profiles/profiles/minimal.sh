@@ -4,17 +4,16 @@
 # Minimal shell profile for Git Workshop
 # Basic improvements without overwhelming new users
 
-# Check if we're running in bash
-if [ -z "$BASH_VERSION" ]; then
-    echo "Warning: This profile is designed for bash"
-    return 1 2>/dev/null || exit 1
-fi
 
-# Basic shell options (only if in bash)
+# Basic shell options (Bash/Zsh compatible)
 if [ -n "$BASH_VERSION" ]; then
-    shopt -s checkwinsize
-    shopt -s histappend
-    shopt -s cdspell
+    shopt -s checkwinsize 2>/dev/null
+    shopt -s histappend 2>/dev/null
+    shopt -s cdspell 2>/dev/null
+elif [ -n "$ZSH_VERSION" ]; then
+    setopt correct 2>/dev/null
+    setopt hist_ignore_dups 2>/dev/null
+    setopt share_history 2>/dev/null
 fi
 
 # History configuration
@@ -70,4 +69,4 @@ profile_help() {
     echo "Type 'git_help' if git-focused profile is loaded"
 }
 
-echo "✨ Minimal profile loaded! Type 'profile_help' for help."
+echo "Minimal profile loaded! Type 'profile_help' for help."

@@ -16,7 +16,7 @@ NC='\033[0m'
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo -e "${BLUE}🚀 Git Workshop Shell Profile Installer${NC}"
+echo -e "${BLUE}Git Workshop Shell Profile Installer${NC}"
 echo "========================================="
 
 # Detect shell
@@ -67,10 +67,15 @@ install_profile() {
         echo -e "${GREEN}✓ Backup created${NC}"
     fi
     
-    # Remove any existing workshop profile lines
+    # Remove any existing workshop profile lines (cross-platform sed)
     if [ -f "$SHELL_RC" ]; then
-        sed -i '/# Git Workshop Profile/d' "$SHELL_RC"
-        sed -i '\|source.*git_workshop.*profiles|d' "$SHELL_RC"
+        if [[ "$(uname)" == "Darwin" ]]; then
+            sed -i '' '/# Git Workshop Profile/d' "$SHELL_RC"
+            sed -i '' '\|source.*git_workshop.*profiles|d' "$SHELL_RC"
+        else
+            sed -i '/# Git Workshop Profile/d' "$SHELL_RC"
+            sed -i '\|source.*git_workshop.*profiles|d' "$SHELL_RC"
+        fi
     fi
     
     # Add new profile

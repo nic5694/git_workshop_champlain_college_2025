@@ -6,9 +6,19 @@
 export SHELL_PROFILE_NAME="developer"
 export SHELL_PROFILE_VERSION="1.0.0"
 
-# Load minimal profile as base
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/minimal.sh"
+# Load minimal profile as base (robust for Bash and Zsh)
+if [ -n "$BASH_VERSION" ]; then
+    _PROFILE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" 2>/dev/null)" && pwd)"
+elif [ -n "$ZSH_VERSION" ]; then
+    _PROFILE_DIR="$(cd "$(dirname "${(%):-%N}" 2>/dev/null)" && pwd)"
+else
+    _PROFILE_DIR="$(cd "$(dirname "$0" 2>/dev/null)" && pwd)"
+fi
+if [ -f "$_PROFILE_DIR/../minimal.sh" ]; then
+    . "$_PROFILE_DIR/../minimal.sh"
+elif [ -f "$_PROFILE_DIR/minimal.sh" ]; then
+    . "$_PROFILE_DIR/minimal.sh"
+fi
 
 # Development aliases
 alias c='clear'
@@ -65,6 +75,8 @@ alias gsp='git stash pop'
 alias gt='git tag'
 alias gw='git show'
 alias gy='git history'
+# Remove any alias for gclean to avoid conflict with function
+unalias gclean 2>/dev/null
 
 # Git flow aliases
 alias gfl='git flow'
@@ -129,9 +141,7 @@ gnb() {
     git checkout -b "$1"
 }
 
-gbd() {
-    git branch -d "$1"
-}
+# Removed function gbd to avoid conflict with alias
 
 grename() {
     git branch -m "$1" "$2"
@@ -154,20 +164,18 @@ cdd() {
     cd ~/Downloads 2>/dev/null || cd ~/downloads 2>/dev/null || cd ~
 }
 
-# Enhanced prompt with Git status
-if [[ -n "$ZSH_VERSION" ]]; then
-    # Zsh with Git status
+# Enhanced prompt with Git status (compatible Bash/Zsh)
+if [ -n "$ZSH_VERSION" ]; then
     autoload -Uz vcs_info
     precmd() { vcs_info }
     zstyle ':vcs_info:git:*' formats '(%b)'
     setopt PROMPT_SUBST
-    PS1='%{$fg[green]%}%n@%m%{$reset_color%}:%{$fg[blue]%}%~%{$reset_color%}%{$fg[red]%}${vcs_info_msg_0_}%{$reset_color%}$ '
+    PS1='%n@%m:%~${vcs_info_msg_0_}$ '
 else
-    # Bash with Git status
     git_branch() {
-        git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
+        git branch 2>/dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
     }
-    PS1='\[\033[0;32m\]\u@\h\[\033[0m\]:\[\033[0;34m\]\w\[\033[0;31m\]$(git_branch)\[\033[0m\]\$ '
+    PS1='\u@\h:\w$(git_branch)$ '
 fi
 
 # History settings

@@ -4,11 +4,24 @@
 # Git-focused shell profile
 # Loads minimal profile first, then adds Git enhancements
 
-# Load minimal profile as base
-source "$(dirname "${BASH_SOURCE[0]}")/../profiles/minimal.sh"
+# Load minimal profile as base (robust for Bash and Zsh)
+if [ -n "$BASH_VERSION" ]; then
+    _PROFILE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" 2>/dev/null)" && pwd)"
+elif [ -n "$ZSH_VERSION" ]; then
+    _PROFILE_DIR="$(cd "$(dirname "${(%):-%N}" 2>/dev/null)" && pwd)"
+else
+    _PROFILE_DIR="$(cd "$(dirname "$0" 2>/dev/null)" && pwd)"
+fi
+if [ -f "$_PROFILE_DIR/../minimal.sh" ]; then
+    . "$_PROFILE_DIR/../minimal.sh"
+elif [ -f "$_PROFILE_DIR/minimal.sh" ]; then
+    . "$_PROFILE_DIR/minimal.sh"
+fi
 
 # Load color themes
-source "$(dirname "${BASH_SOURCE[0]}")/../themes/bash-colors.sh"
+if [ -f "$_PROFILE_DIR/../themes/bash-colors.sh" ]; then
+    . "$_PROFILE_DIR/../themes/bash-colors.sh"
+fi
 
 # Enhanced Git aliases
 alias gs='git status'
@@ -48,12 +61,15 @@ alias gmain='git checkout main'
 alias gmaster='git checkout master'
 alias gdevelop='git checkout develop'
 
-# Work-in-progress shortcuts
+# Remove any alias for gwip to avoid conflict with function
+unalias gwip 2>/dev/null
 gwip() {
     git add -A
     git commit -m "WIP: work in progress"
 }
 
+# Remove any alias for gunwip to avoid conflict with function
+unalias gunwip 2>/dev/null
 gunwip() {
     git log -n 1 --pretty=format:%s | grep -q "WIP: work in progress" && git reset HEAD~1
 }
@@ -160,7 +176,6 @@ git_help() {
     echo
 }
 
-# Set enhanced prompt (use scheme 2 for git-focused)
-set_prompt_scheme_2
 
-echo "🔧 Git-focused profile loaded! Type 'git_help' for available commands."
+
+echo "Git-focused profile loaded! Type 'git_help' for available commands."
