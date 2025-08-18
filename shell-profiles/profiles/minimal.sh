@@ -3,6 +3,7 @@
 
 # Minimal shell profile for Git Workshop
 # Basic improvements without overwhelming new users
+export SHELL_PROFILE_NAME="minimal"
 
 
 # Basic shell options (Bash/Zsh compatible)
@@ -14,6 +15,9 @@ elif [ -n "$ZSH_VERSION" ]; then
     setopt correct 2>/dev/null
     setopt hist_ignore_dups 2>/dev/null
     setopt share_history 2>/dev/null
+else
+    # Not bash or zsh, skip shell options
+    :
 fi
 
 # History configuration

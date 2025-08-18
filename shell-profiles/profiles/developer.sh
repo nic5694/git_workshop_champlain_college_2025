@@ -179,7 +179,7 @@ else
 fi
 
 # History settings
-if [[ -n "$ZSH_VERSION" ]]; then
+if [ -n "$ZSH_VERSION" ]; then
     HISTSIZE=10000
     SAVEHIST=10000
     setopt HIST_VERIFY
@@ -190,7 +190,7 @@ if [[ -n "$ZSH_VERSION" ]]; then
     setopt HIST_IGNORE_ALL_DUPS
     setopt HIST_REDUCE_BLANKS
     setopt HIST_IGNORE_SPACE
-else
+elif [ -n "$BASH_VERSION" ]; then
     HISTSIZE=10000
     HISTFILESIZE=20000
     shopt -s histappend
@@ -198,10 +198,10 @@ else
 fi
 
 # Enable completion
-if [[ -n "$ZSH_VERSION" ]]; then
+if [ -n "$ZSH_VERSION" ]; then
     autoload -U compinit && compinit
     zstyle ':completion:*' menu select
-else
+elif [ -n "$BASH_VERSION" ]; then
     if ! shopt -oq posix; then
         if [ -f /usr/share/bash-completion/bash_completion ]; then
             . /usr/share/bash-completion/bash_completion

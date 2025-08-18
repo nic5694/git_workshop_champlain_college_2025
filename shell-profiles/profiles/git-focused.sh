@@ -3,6 +3,7 @@
 
 # Git-focused shell profile
 # Loads minimal profile first, then adds Git enhancements
+export SHELL_PROFILE_NAME="git-focused"
 
 # Load minimal profile as base (robust for Bash and Zsh)
 if [ -n "$BASH_VERSION" ]; then

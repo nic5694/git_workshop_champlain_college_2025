@@ -1,5 +1,6 @@
 # Oh My Zsh Custom Configuration for Git Workshop
 # Source this file in your .zshrc after Oh My Zsh initialization
+export SHELL_PROFILE_NAME="oh-my-zsh-custom"
 
 # Git Workshop Theme Configuration
 ZSH_THEME_GIT_PROMPT_PREFIX="%{$fg[blue]%}git:(%{$fg[red]%}"
