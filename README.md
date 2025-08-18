@@ -1,6 +1,6 @@
 # Git CLI Workshop - Champlain College 2025
 
-Welcome to the comprehensive Git Command Line Interface workshop! This repository contains everything you need to master Git CLI, customize your shell environment, and become a command-line power user.
+This repository contains everything you need to master Git CLI, customize your shell environment, and become comfortable command-line user.
 
 ## Quick Start with Dev Container
 
