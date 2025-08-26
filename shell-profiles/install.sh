@@ -6,15 +6,26 @@
 
 set -e
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Fix Windows line endings if running on Unix-like systems
+if command -v dos2unix >/dev/null 2>&1; then
+    # Convert this script and all profile files to Unix line endings
+    dos2unix "$0" 2>/dev/null || true
+    find "$SCRIPT_DIR" -name "*.sh" -exec dos2unix {} \; 2>/dev/null || true
+elif command -v sed >/dev/null 2>&1; then
+    # Fallback: use sed to remove carriage returns
+    sed -i 's/\r$//' "$0" 2>/dev/null || true
+    find "$SCRIPT_DIR" -name "*.sh" -exec sed -i 's/\r$//' {} \; 2>/dev/null || true
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
-
-# Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo -e "${BLUE}Git Workshop Shell Profile Installer${NC}"
 echo "========================================="
