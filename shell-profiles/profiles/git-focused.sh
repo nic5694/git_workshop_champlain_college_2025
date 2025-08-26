@@ -143,6 +143,30 @@ gclone() {
     fi
 }
 
+# Directory bookmarks
+# Add a named directory bookmark mapping ~src -> ~/Documents/GitHub
+# Use a single variable so the path can be reused and overridden if needed
+_BOOKMARK_SRC="${_BOOKMARK_SRC:-"$HOME/Documents/GitHub"}"
+export _BOOKMARK_SRC
+
+# Zsh: register a named directory so ~src expands to the path
+if [ -n "$ZSH_VERSION" ]; then
+    if command -v hash >/dev/null 2>&1; then
+        # hash -d name=path creates a named directory accessible as ~name
+        hash -d src="${_BOOKMARK_SRC}"
+    fi
+fi
+
+# Bash: provide a convenient function and variable to jump to the bookmarked directory
+# Note: Bash does not support ~name tilde expansion for custom names, so provide a function instead
+if [ -n "$BASH_VERSION" ]; then
+    src() {
+        builtin cd "${_BOOKMARK_SRC}" || return $?
+    }
+    # Export a conventional variable for scripts or users who prefer it
+    export SRC_DIR="${_BOOKMARK_SRC}"
+fi
+
 # Git help function
 git_help() {
     echo -e "${BLUE}Git Workshop - Available Commands:${NC}"
