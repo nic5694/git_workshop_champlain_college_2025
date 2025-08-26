@@ -4,6 +4,20 @@ Transform your terminal into a powerful, beautiful, and efficient workspace! Thi
 
 ## Quick Installation
 
+### Windows Users (WSL/Git Bash/MSYS2)
+
+If you're on Windows and get a "bad interpreter" error with `^M` characters:
+
+```bash
+# First, fix line endings
+./fix-line-endings.sh
+
+# Then run the installer
+./install.sh
+```
+
+### Unix/Linux/macOS
+
 ```bash
 # Clone this repository and navigate to shell-profiles
 cd shell-profiles
@@ -263,135 +277,35 @@ profile_changelog
 
 ## Troubleshooting
 
-### Common Issues
+### Windows Line Ending Issues
 
-#### "Command not found" errors
-- Ensure the profile is properly sourced
-- Check if required tools are installed
-- Verify PATH configuration
+**Problem**: Getting "bad interpreter" errors with `^M` characters when running scripts.
 
-#### Slow startup times
-- Try the minimal profile
-- Disable heavy features
-- Check for problematic plugins
-
-#### Git functions not working
-- Verify Git is installed and configured
-- Check Git aliases configuration
-- Ensure you're in a Git repository
-
-### Getting Help
+**Solution**:
 ```bash
-# Show available functions
-profile_help
+# Run the line ending fix script first
+./fix-line-endings.sh
 
-# List all aliases
-alias
-
-# Show Git aliases
-git_aliases
-```
-
-## Exporting Shell Profiles to Bash or Zsh
-
-This section explains how to export and activate the shell configurations in this repository into your Bash or Zsh environment. It provides a safe, repeatable process (interactive or manual), backup instructions, verification steps, and common troubleshooting tips.
-
-Prerequisites
-- A POSIX-compatible shell (Bash or Zsh).
-- Git and a clone of this repository available locally.
-- Optional tools: `fzf`, `bash-completion` (for extra features).
-
-Quick (interactive) installation
-1. Open a terminal and change into the profiles directory:
-
-```bash
-cd /path/to/shell-profiles
-# or, if you're already in the project root:
-# cd shell-profiles
-```
-
-2. Run the interactive installer:
-
-```bash
+# Then proceed with installation
 ./install.sh
 ```
 
-The installer will detect your shell, show available profiles, back up your existing shell startup file, and add a `source` line to activate the chosen profile.
-
-Manual installation (explicit)
-1. Choose which profile to load. Common choices:
-   - `profiles/minimal.sh` — lightweight
-   - `profiles/developer.sh` — balanced
-   - `profiles/poweruser.sh` — feature-rich
-   - `profiles/git-focused.sh` — git-centric
-
-2. Get the absolute path to the `shell-profiles` directory and append a source line to your shell startup file.
-
-Bash (Linux):
+**Alternative manual fixes**:
 ```bash
-cd /path/to/shell-profiles
-echo "# Git Workshop profile - minimal" >> ~/.bashrc
-echo "source $(pwd)/profiles/developer.sh" >> ~/.bashrc
-# Reload
-source ~/.bashrc
+# Using dos2unix (if available)
+dos2unix *.sh profiles/*.sh
+
+# Using sed
+sed -i 's/\r$//' *.sh profiles/*.sh
+
+# Using tr
+for file in *.sh profiles/*.sh; do
+    tr -d '\r' < "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+done
 ```
 
-Zsh:
-```bash
-cd /path/to/shell-profiles
-echo "# Git Workshop profile - developer" >> ~/.zshrc
-echo "source $(pwd)/profiles/developer.sh" >> ~/.zshrc
-# Reload
-source ~/.zshrc
-```
+### Shell-Specific Issues
 
-Notes:
-- Replace `developer.sh` above with the profile you prefer (e.g., `minimal.sh`, `poweruser.sh`, `git-focused.sh`).
-- The installer (`install.sh`) already creates backups before modifying `~/.bashrc` or `~/.zshrc`.
-
-Backing up & restoring your startup file
-Before editing any startup file, create a backup:
-
-```bash
-cp ~/.bashrc ~/.bashrc.workshop-backup-$(date +%Y%m%d-%H%M%S)
-cp ~/.zshrc ~/.zshrc.workshop-backup-$(date +%Y%m%d-%H%M%S)
-```
-
-To restore a backup:
-```bash
-mv ~/.bashrc.workshop-backup-YYYYMMDD-HHMMSS ~/.bashrc
-# then source it again: source ~/.bashrc
-```
-
-Enable optional features
-- fzf keybindings and completion: run the fzf installer and allow it to write `~/.fzf.bash` / `~/.fzf.zsh`.
-
-```bash
-# typical fzf installer
-$(which fzf 2>/dev/null || echo "/usr/bin/fzf")/install
-# or if installed via package manager, run the bundled install script
-~/.fzf/install
-```
-
-- Bash completion (Bash): install `bash-completion` for your distro (e.g., `sudo apt install bash-completion`) and ensure startup files source it. The profiles source completion only when running in Bash.
-
-Verification
-After installing and sourcing your startup file, verify core features:
-
-```bash
-# Confirm profile loaded
-profile_help
-# List aliases
-alias | head -30
-# Git available
-git --version
-# fzf available (if you enabled it)
-fzf --version
-# Bash completion (for bash)
-# open a new shell and test tab completion for git commands
-```
-
-Troubleshooting
 - "command not found: shopt" when sourcing `~/.bashrc` from Zsh:
   - This happens when Bash-only commands are present in a file that Zsh is sourcing. Fix by guarding Bash-specific commands in your `~/.bashrc`:
 
@@ -407,10 +321,10 @@ fi
 
 - Profile functions/aliases not present: confirm the right profile is sourced and that the file path in your startup file points to the correct location.
 
-Uninstall / Remove profile from startup
+### Uninstall / Remove profile from startup
 To remove the profile, edit your `~/.bashrc` or `~/.zshrc` and remove the `source` line the installer added, or restore a backup created by the installer.
 
-Advanced tips
+## Advanced tips
 - Use `profiles/minimal.sh` on remote servers where startup speed matters.
 - For per-repo or per-project customizations, create `profiles/personal.sh` and source it from the profile you installed (or from `~/.bashrc`/`~/.zshrc`).
 - If you share the dotfiles across machines, use the repository absolute path variable:
