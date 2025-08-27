@@ -183,19 +183,153 @@ install_starship() {
     fi
 }
 
-# Function to install fzf
+# Function to install fzf and related tools
 install_fzf() {
     if ! command -v fzf >/dev/null 2>&1; then
-        echo -e "${BLUE}Installing fzf...${NC}"
+        echo -e "${BLUE}Installing fzf and related tools...${NC}"
+        
+        # Install fzf
         if [ -d "$HOME/.fzf" ]; then
             rm -rf "$HOME/.fzf"
         fi
         git clone --depth 1 https://github.com/junegunn/fzf.git "$HOME/.fzf" && \
         "$HOME/.fzf/install" --all --no-bash --no-zsh --no-fish
-        echo -e "${GREEN}✓ fzf installed${NC}"
+        
+        # Install bat for better file previews
+        local distro=$(detect_distro)
+        case "$distro" in
+            ubuntu|debian|pop)
+                if ! command -v bat >/dev/null 2>&1 && ! command -v batcat >/dev/null 2>&1; then
+                    echo -e "${BLUE}Installing bat for file previews...${NC}"
+                    sudo apt install -y bat || true
+                    # Create bat symlink if it was installed as batcat
+                    if command -v batcat >/dev/null 2>&1 && ! command -v bat >/dev/null 2>&1; then
+                        sudo ln -sf /usr/bin/batcat /usr/local/bin/bat 2>/dev/null || true
+                    fi
+                fi
+                ;;
+            fedora)
+                sudo dnf install -y bat || true
+                ;;
+            arch|manjaro)
+                sudo pacman -S --noconfirm bat || true
+                ;;
+            *)
+                echo -e "${YELLOW}bat package not installed. File previews will use basic 'head' command${NC}"
+                ;;
+        esac
+        
+        # Install fd for better file finding (optional)
+        case "$distro" in
+            ubuntu|debian|pop)
+                sudo apt install -y fd-find || true
+                # Create fd symlink if it was installed as fdfind
+                if command -v fdfind >/dev/null 2>&1 && ! command -v fd >/dev/null 2>&1; then
+                    sudo ln -sf /usr/bin/fdfind /usr/local/bin/fd 2>/dev/null || true
+                fi
+                ;;
+            fedora)
+                sudo dnf install -y fd-find || true
+                ;;
+            arch|manjaro)
+                sudo pacman -S --noconfirm fd || true
+                ;;
+            *)
+                echo -e "${YELLOW}fd package not available, using find instead${NC}"
+                ;;
+        esac
+        
+        echo -e "${GREEN}✓ fzf and related tools installed${NC}"
     else
         echo -e "${GREEN}✓ fzf already installed${NC}"
     fi
+}
+
+# Function to install fonts and icon support
+install_fonts_and_icons() {
+    echo -e "\n${BLUE}Installing fonts and icon support...${NC}"
+    
+    local distro=$(detect_distro)
+    
+    case "$distro" in
+        ubuntu|debian|pop)
+            # Install font management tools
+            if ! command -v fc-list >/dev/null 2>&1; then
+                echo -e "${BLUE}Installing fontconfig...${NC}"
+                sudo apt update && sudo apt install -y fontconfig
+            fi
+            
+            # Install essential fonts for icons and symbols
+            echo -e "${BLUE}Installing fonts for terminal icons...${NC}"
+            sudo apt install -y \
+                fonts-powerline \
+                fonts-font-awesome \
+                fonts-dejavu \
+                fonts-liberation \
+                fonts-noto-color-emoji \
+                ttf-ubuntu-font-family \
+                fontconfig-config || true
+            
+            # Install Nerd Fonts (FiraCode Nerd Font)
+            if [ ! -f "$HOME/.local/share/fonts/FiraCodeNerdFont-Regular.ttf" ]; then
+                echo -e "${BLUE}Installing FiraCode Nerd Font...${NC}"
+                mkdir -p "$HOME/.local/share/fonts"
+                cd /tmp
+                curl -fLo "FiraCode.zip" https://github.com/ryanoasis/nerd-fonts/releases/download/v3.1.1/FiraCode.zip
+                unzip -o FiraCode.zip -d "$HOME/.local/share/fonts/"
+                rm -f FiraCode.zip
+                fc-cache -fv
+                echo -e "${GREEN}✓ FiraCode Nerd Font installed${NC}"
+            fi
+            ;;
+        fedora)
+            sudo dnf install -y \
+                fontconfig \
+                powerline-fonts \
+                fontawesome-fonts \
+                dejavu-fonts-all \
+                liberation-fonts \
+                google-noto-emoji-color-fonts || true
+            ;;
+        centos|rhel|rocky|almalinux)
+            sudo yum install -y fontconfig || sudo dnf install -y fontconfig || true
+            # Note: Many font packages may not be available in default repos
+            echo -e "${YELLOW}Some font packages may need to be installed manually on RHEL-based systems${NC}"
+            ;;
+        arch|manjaro)
+            sudo pacman -S --noconfirm \
+                fontconfig \
+                powerline-fonts \
+                ttf-font-awesome \
+                ttf-dejavu \
+                ttf-liberation \
+                noto-fonts-emoji || true
+            ;;
+        opensuse*)
+            sudo zypper install -y \
+                fontconfig \
+                powerline-fonts \
+                fontawesome-fonts \
+                dejavu-fonts \
+                liberation-fonts || true
+            ;;
+        alpine)
+            sudo apk add \
+                fontconfig \
+                font-awesome \
+                ttf-dejavu \
+                ttf-liberation || true
+            ;;
+        *)
+            echo -e "${YELLOW}Unknown distribution. Please install fonts manually:${NC}"
+            echo -e "  - fontconfig (font management)"
+            echo -e "  - powerline-fonts (powerline symbols)"
+            echo -e "  - font-awesome (icon fonts)"
+            echo -e "  - A Nerd Font (recommended: FiraCode Nerd Font)"
+            ;;
+    esac
+    
+    echo -e "${GREEN}✓ Font and icon support installed${NC}"
 }
 
 # Check and install prerequisites
@@ -240,6 +374,9 @@ check_prerequisites() {
     else
         echo -e "${GREEN}✓ curl/wget found${NC}"
     fi
+    
+    # Install fonts and icons for proper terminal display
+    install_fonts_and_icons
     
     echo -e "${GREEN}✓ Basic prerequisites checked${NC}"
 }
@@ -401,3 +538,11 @@ fi
 
 echo -e "\n${GREEN}Installation complete!${NC}"
 echo -e "Run ${BLUE}source $SHELL_RC${NC} to activate your new profile."
+
+# Run icon test if available
+if [ -f "$SCRIPT_DIR/test-icons.sh" ]; then
+    echo -e "\n${BLUE}Testing icon and font support...${NC}"
+    bash "$SCRIPT_DIR/test-icons.sh"
+    echo -e "\n${YELLOW}Note: If you see boxes or question marks instead of icons,${NC}"
+    echo -e "${YELLOW}configure your terminal to use 'FiraCode Nerd Font' or another Nerd Font.${NC}"
+fi

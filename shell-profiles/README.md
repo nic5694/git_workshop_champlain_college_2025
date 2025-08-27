@@ -10,11 +10,23 @@ The installer will automatically detect your system and install required package
 - **Zsh** (if not present)
 - **Git** (if not present) 
 - **curl/wget** (for downloading components)
+- **Font packages** - Including Powerline fonts, Font Awesome, and FiraCode Nerd Font for proper icon display
+- **fontconfig** - Font management system for Linux
 
 Optional components (will be offered during installation):
 - **Oh My Zsh** - Enhanced Zsh framework
 - **Starship** - Modern cross-shell prompt (auto-configured in developer/poweruser/git-focused profiles)
 - **fzf** - Fuzzy finder for enhanced search (auto-configured with advanced styling)
+- **bat** - Syntax highlighting for file previews
+- **fd** - Fast file finder
+
+### Icon and Font Support
+
+The installer automatically sets up proper font support for terminal icons and symbols. If you see boxes (□) or question marks (?) instead of icons:
+
+1. **Test icon support**: Run `./test-icons.sh` to verify font installation
+2. **Configure your terminal**: Set your terminal font to "FiraCode Nerd Font" or another Nerd Font
+3. **VS Code users**: Set `Terminal › Integrated: Font Family` to `FiraCode Nerd Font` in settings
 
 ### Interactive Installation
 
