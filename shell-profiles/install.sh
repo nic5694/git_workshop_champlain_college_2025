@@ -50,6 +50,44 @@ done
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Environment validation
+validate_environment() {
+    echo -e "${BLUE}Validating environment...${NC}"
+    
+    # Check if HOME is set
+    if [ -z "$HOME" ]; then
+        echo -e "${RED}Error: HOME environment variable not set${NC}"
+        return 1
+    fi
+    
+    # Check if we can write to HOME
+    if [ ! -w "$HOME" ]; then
+        echo -e "${RED}Error: Cannot write to HOME directory: $HOME${NC}"
+        return 1
+    fi
+    
+    # Check current user
+    CURRENT_USER="${USER:-$(whoami 2>/dev/null || echo 'unknown')}"
+    echo -e "${GREEN}✓ Running as user: $CURRENT_USER${NC}"
+    echo -e "${GREEN}✓ HOME directory: $HOME${NC}"
+    
+    # Check shell availability
+    if [ -n "$ZSH_VERSION" ]; then
+        echo -e "${GREEN}✓ Running in zsh: $ZSH_VERSION${NC}"
+    elif [ -n "$BASH_VERSION" ]; then
+        echo -e "${GREEN}✓ Running in bash: $BASH_VERSION${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Unknown shell, but proceeding...${NC}"
+    fi
+    
+    # Check if we're in a container/codespace
+    if [ -f /.dockerenv ] || [ -n "$CODESPACES" ] || [ -n "$GITPOD_WORKSPACE_ID" ]; then
+        echo -e "${BLUE}ℹ️  Container/Cloud environment detected${NC}"
+    fi
+    
+    return 0
+}
+
 # Fix Windows line endings if running on Unix-like systems
 if command -v dos2unix >/dev/null 2>&1; then
     # Convert this script and all profile files to Unix line endings
@@ -222,8 +260,8 @@ install_fzf() {
         cat > "$HOME/.fzf.zsh" << 'EOF'
 # Setup fzf - prioritize latest version
 # ---------
-if [[ ! "$PATH" == */home/vscode/.fzf/bin* ]]; then
-  PATH="/home/vscode/.fzf/bin:${PATH}"
+if [[ ! "$PATH" == *$HOME/.fzf/bin* ]]; then
+  PATH="$HOME/.fzf/bin:${PATH}"
 fi
 
 # Load fzf shell integration
@@ -233,8 +271,8 @@ if command -v fzf >/dev/null 2>&1; then
     source <(fzf --zsh)
   else
     # Fallback for older versions
-    [[ $- == *i* ]] && source "/home/vscode/.fzf/shell/completion.zsh" 2> /dev/null
-    source "/home/vscode/.fzf/shell/key-bindings.zsh"
+    [[ $- == *i* ]] && source "$HOME/.fzf/shell/completion.zsh" 2> /dev/null
+    source "$HOME/.fzf/shell/key-bindings.zsh"
   fi
 fi
 EOF
@@ -243,8 +281,8 @@ EOF
         cat > "$HOME/.fzf.bash" << 'EOF'
 # Setup fzf - prioritize latest version
 # ---------
-if [[ ! "$PATH" == */home/vscode/.fzf/bin* ]]; then
-  PATH="/home/vscode/.fzf/bin:${PATH}"
+if [[ ! "$PATH" == *$HOME/.fzf/bin* ]]; then
+  PATH="$HOME/.fzf/bin:${PATH}"
 fi
 
 # Load fzf shell integration
@@ -254,8 +292,8 @@ if command -v fzf >/dev/null 2>&1; then
     source <(fzf --bash)
   else
     # Fallback for older versions
-    [[ $- == *i* ]] && source "/home/vscode/.fzf/shell/completion.bash" 2> /dev/null
-    source "/home/vscode/.fzf/shell/key-bindings.bash"
+    [[ $- == *i* ]] && source "$HOME/.fzf/shell/completion.bash" 2> /dev/null
+    source "$HOME/.fzf/shell/key-bindings.bash"
   fi
 fi
 EOF
@@ -537,7 +575,12 @@ ask_optional_components() {
     fi
 }
 
-# Run prerequisite checks
+# Run environment validation and prerequisite checks
+if ! validate_environment; then
+    echo -e "${RED}Environment validation failed. Please fix the issues above and try again.${NC}"
+    exit 1
+fi
+
 check_prerequisites
 ask_optional_components
 

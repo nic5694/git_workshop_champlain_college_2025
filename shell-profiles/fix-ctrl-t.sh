@@ -29,15 +29,15 @@ if [ -f ~/.fzf.zsh ] && grep -q "source <(fzf --zsh)" ~/.fzf.zsh; then
     cat > ~/.fzf.zsh << 'EOF'
 # Setup fzf
 # ---------
-if [[ ! "$PATH" == */home/vscode/.fzf/bin* ]]; then
-  PATH="${PATH:+${PATH}:}/home/vscode/.fzf/bin"
+if [[ ! "$PATH" == *$HOME/.fzf/bin* ]]; then
+  PATH="${PATH:+${PATH}:}$HOME/.fzf/bin"
 fi
 
 # Auto-completion
-[[ $- == *i* ]] && source "/home/vscode/.fzf/shell/completion.zsh" 2> /dev/null
+[[ $- == *i* ]] && source "$HOME/.fzf/shell/completion.zsh" 2> /dev/null
 
 # Key bindings
-source "/home/vscode/.fzf/shell/key-bindings.zsh"
+source "$HOME/.fzf/shell/key-bindings.zsh"
 EOF
     echo -e "${GREEN}✅ Fixed .fzf.zsh${NC}"
 else
