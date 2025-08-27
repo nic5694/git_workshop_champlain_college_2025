@@ -28,6 +28,12 @@ The installer automatically sets up proper font support for terminal icons and s
 2. **Configure your terminal**: Set your terminal font to "FiraCode Nerd Font" or another Nerd Font
 3. **VS Code users**: Set `Terminal › Integrated: Font Family` to `FiraCode Nerd Font` in settings
 
+### Testing and Verification
+
+- **Icon Display**: Use `./test-icons.sh` to verify that fonts and icons display correctly
+- **Profile Functionality**: All profiles include built-in verification - they will show status information when loaded
+- **Ctrl+T Functionality**: fzf key bindings (Ctrl+T for files, Ctrl+R for history, Alt+C for directories) are automatically tested during profile loading
+
 ### Interactive Installation
 
 ```bash
@@ -59,8 +65,8 @@ cd shell-profiles
 If you're on Windows and get a "bad interpreter" error with `^M` characters:
 
 ```bash
-# First, fix line endings
-./fix-line-endings.sh
+# Fix line endings using sed
+sed -i 's/\r$//' *.sh profiles/*.sh
 
 # Then run the installer
 ./install.sh
@@ -71,6 +77,7 @@ If you're on Windows and get a "bad interpreter" error with `^M` characters:
 ```
 shell-profiles/
 ├── install.sh                 # Interactive installer script
+├── test-icons.sh              # Font and icon verification tool
 ├── profiles/
 │   ├── minimal.sh             # Clean, fast profile
 │   ├── developer.sh           # Developer-focused setup
@@ -329,8 +336,8 @@ profile_changelog
 
 **Solution**:
 ```bash
-# Run the line ending fix script first
-./fix-line-endings.sh
+# Fix line endings manually
+sed -i 's/\r$//' *.sh profiles/*.sh
 
 # Then proceed with installation
 ./install.sh
@@ -369,6 +376,9 @@ fi
 
 ### Uninstall / Remove profile from startup
 To remove the profile, edit your `~/.bashrc` or `~/.zshrc` and remove the `source` line the installer added, or restore a backup created by the installer.
+
+### Note on Removed Test Scripts
+Previous versions included separate test scripts for Ctrl+T functionality (`test-ctrl-t.sh`, `fix-ctrl-t.sh`, etc.). These have been removed as the functionality is now built directly into the profiles themselves. All testing and verification happens automatically during profile loading.
 
 ## Advanced tips
 - Use `profiles/minimal.sh` on remote servers where startup speed matters.
