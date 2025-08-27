@@ -258,11 +258,13 @@ install_fzf() {
         
         # Fix .fzf.zsh to prioritize new fzf binary in PATH
         cat > "$HOME/.fzf.zsh" << 'EOF'
-# Setup fzf - prioritize latest version
+# Setup fzf - prioritize latest version over system fzf
 # ---------
-if [[ ! "$PATH" == *$HOME/.fzf/bin* ]]; then
-  PATH="$HOME/.fzf/bin:${PATH}"
-fi
+# Remove any existing ~/.fzf/bin from PATH and add it to the front
+PATH_WITHOUT_FZF="${PATH//:$HOME\/.fzf\/bin/}"
+PATH_WITHOUT_FZF="${PATH_WITHOUT_FZF//$HOME\/.fzf\/bin:/}"
+PATH_WITHOUT_FZF="${PATH_WITHOUT_FZF//$HOME\/.fzf\/bin/}"
+export PATH="$HOME/.fzf/bin:$PATH_WITHOUT_FZF"
 
 # Load fzf shell integration
 if command -v fzf >/dev/null 2>&1; then
@@ -279,11 +281,13 @@ EOF
         
         # Fix .fzf.bash to prioritize new fzf binary in PATH
         cat > "$HOME/.fzf.bash" << 'EOF'
-# Setup fzf - prioritize latest version
+# Setup fzf - prioritize latest version over system fzf
 # ---------
-if [[ ! "$PATH" == *$HOME/.fzf/bin* ]]; then
-  PATH="$HOME/.fzf/bin:${PATH}"
-fi
+# Remove any existing ~/.fzf/bin from PATH and add it to the front
+PATH_WITHOUT_FZF="${PATH//:$HOME\/.fzf\/bin/}"
+PATH_WITHOUT_FZF="${PATH_WITHOUT_FZF//$HOME\/.fzf\/bin:/}"
+PATH_WITHOUT_FZF="${PATH_WITHOUT_FZF//$HOME\/.fzf\/bin/}"
+export PATH="$HOME/.fzf/bin:$PATH_WITHOUT_FZF"
 
 # Load fzf shell integration
 if command -v fzf >/dev/null 2>&1; then
@@ -586,7 +590,33 @@ ask_optional_components
 
 echo -e "\n${BLUE}Proceeding with profile installation...${NC}"
 
-# Detect shell
+# Detect available shells and configure accordingly
+SHELLS_TO_CONFIGURE=()
+
+# Check which shells are available and should be configured
+if command -v zsh >/dev/null 2>&1 && [ -f "$HOME/.zshrc" ]; then
+    SHELLS_TO_CONFIGURE+=("zsh")
+fi
+
+if command -v bash >/dev/null 2>&1 && [ -f "$HOME/.bashrc" ]; then
+    SHELLS_TO_CONFIGURE+=("bash")
+fi
+
+# If no shell configs found, create them
+if [ ${#SHELLS_TO_CONFIGURE[@]} -eq 0 ]; then
+    if command -v zsh >/dev/null 2>&1; then
+        echo -e "${BLUE}Creating ~/.zshrc...${NC}"
+        touch "$HOME/.zshrc"
+        SHELLS_TO_CONFIGURE+=("zsh")
+    fi
+    if command -v bash >/dev/null 2>&1; then
+        echo -e "${BLUE}Creating ~/.bashrc...${NC}"
+        touch "$HOME/.bashrc"
+        SHELLS_TO_CONFIGURE+=("bash")
+    fi
+fi
+
+# Determine primary shell for detection logic
 SHELL_TYPE=""
 if [ -n "$ZSH_VERSION" ]; then
     SHELL_TYPE="zsh"
@@ -594,14 +624,16 @@ if [ -n "$ZSH_VERSION" ]; then
 elif [ -n "$BASH_VERSION" ]; then
     SHELL_TYPE="bash"
     SHELL_RC="$HOME/.bashrc"
+elif command -v zsh >/dev/null 2>&1; then
+    SHELL_TYPE="zsh"
+    SHELL_RC="$HOME/.zshrc"
 else
-    echo -e "${YELLOW}Warning: Could not detect shell type. Assuming bash.${NC}"
     SHELL_TYPE="bash"
     SHELL_RC="$HOME/.bashrc"
 fi
 
-echo -e "Detected shell: ${GREEN}$SHELL_TYPE${NC}"
-echo -e "Configuration file: ${GREEN}$SHELL_RC${NC}"
+echo -e "Available shells to configure: ${GREEN}${SHELLS_TO_CONFIGURE[*]}${NC}"
+echo -e "Primary shell detected: ${GREEN}$SHELL_TYPE${NC}"
 
 # Check for cross-shell configuration issues
 if [ "$SHELL_TYPE" = "zsh" ] && [ -f "$HOME/.bashrc" ]; then
@@ -628,6 +660,61 @@ for i in "${!PROFILES[@]}"; do
     echo -e "  ${GREEN}$((i+1)). $name${NC} - $desc"
 done
 
+# Function to install profile for a specific shell
+install_profile_for_shell() {
+    local profile_name="$1"
+    local shell_type="$2"
+    local profile_file="$SCRIPT_DIR/profiles/${profile_name}.sh"
+    local shell_rc=""
+    
+    if [ "$shell_type" = "zsh" ]; then
+        shell_rc="$HOME/.zshrc"
+    else
+        shell_rc="$HOME/.bashrc"
+    fi
+    
+    echo -e "${BLUE}Configuring $shell_type ($shell_rc)...${NC}"
+    
+    # Create backup of current shell rc
+    if [ -f "$shell_rc" ]; then
+        cp "$shell_rc" "$shell_rc.workshop-backup-$(date +%Y%m%d-%H%M%S)"
+        echo -e "${GREEN}✓ Backup created for $shell_type${NC}"
+    fi
+    
+    # Remove any existing workshop profile lines (cross-platform sed)
+    if [ -f "$shell_rc" ]; then
+        if [[ "$(uname)" == "Darwin" ]]; then
+            sed -i '' '/# Git Workshop Profile/d' "$shell_rc"
+            sed -i '' '\|source.*git_workshop.*profiles|d' "$shell_rc"
+            sed -i '' '/# fzf integration/d' "$shell_rc"
+            sed -i '' '\|source.*\.fzf\.|d' "$shell_rc"
+        else
+            sed -i '/# Git Workshop Profile/d' "$shell_rc"
+            sed -i '\|source.*git_workshop.*profiles|d' "$shell_rc"
+            sed -i '/# fzf integration/d' "$shell_rc"
+            sed -i '\|source.*\.fzf\.|d' "$shell_rc"
+        fi
+    fi
+    
+    # Add fzf integration first (so latest version is in PATH)
+    echo "" >> "$shell_rc"
+    echo "# fzf integration - prioritize latest version" >> "$shell_rc"
+    if [ "$shell_type" = "zsh" ]; then
+        echo "[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh" >> "$shell_rc"
+    else
+        echo "[ -f ~/.fzf.bash ] && source ~/.fzf.bash" >> "$shell_rc"
+    fi
+    
+    # Add new profile
+    echo "" >> "$shell_rc"
+    echo "# Git Workshop Profile - $profile_name" >> "$shell_rc"
+    echo "if [ -f \"$profile_file\" ]; then" >> "$shell_rc"
+    echo "    source \"$profile_file\"" >> "$shell_rc"
+    echo "fi" >> "$shell_rc"
+    
+    echo -e "${GREEN}✓ Profile '$profile_name' installed for $shell_type${NC}"
+}
+
 # Function to install profile
 install_profile() {
     local profile_name="$1"
@@ -638,32 +725,19 @@ install_profile() {
         return 1
     fi
     
-    # Create backup of current shell rc
-    if [ -f "$SHELL_RC" ]; then
-        cp "$SHELL_RC" "$SHELL_RC.workshop-backup-$(date +%Y%m%d-%H%M%S)"
-        echo -e "${GREEN}✓ Backup created${NC}"
-    fi
+    # Install for all available shells
+    for shell in "${SHELLS_TO_CONFIGURE[@]}"; do
+        install_profile_for_shell "$profile_name" "$shell"
+    done
     
-    # Remove any existing workshop profile lines (cross-platform sed)
-    if [ -f "$SHELL_RC" ]; then
-        if [[ "$(uname)" == "Darwin" ]]; then
-            sed -i '' '/# Git Workshop Profile/d' "$SHELL_RC"
-            sed -i '' '\|source.*git_workshop.*profiles|d' "$SHELL_RC"
+    echo -e "${YELLOW}Please restart your shell(s) or run:${NC}"
+    for shell in "${SHELLS_TO_CONFIGURE[@]}"; do
+        if [ "$shell" = "zsh" ]; then
+            echo -e "${BLUE}  source ~/.zshrc${NC}"
         else
-            sed -i '/# Git Workshop Profile/d' "$SHELL_RC"
-            sed -i '\|source.*git_workshop.*profiles|d' "$SHELL_RC"
+            echo -e "${BLUE}  source ~/.bashrc${NC}"
         fi
-    fi
-    
-    # Add new profile
-    echo "" >> "$SHELL_RC"
-    echo "# Git Workshop Profile - $profile_name" >> "$SHELL_RC"
-    echo "if [ -f \"$profile_file\" ]; then" >> "$SHELL_RC"
-    echo "    source \"$profile_file\"" >> "$SHELL_RC"
-    echo "fi" >> "$SHELL_RC"
-    
-    echo -e "${GREEN}✓ Profile '$profile_name' installed${NC}"
-    echo -e "${YELLOW}Please restart your shell or run: source $SHELL_RC${NC}"
+    done
 }
 
 # Interactive mode
@@ -684,7 +758,14 @@ else
 fi
 
 echo -e "\n${GREEN}Installation complete!${NC}"
-echo -e "Run ${BLUE}source $SHELL_RC${NC} to activate your new profile."
+echo -e "${YELLOW}To activate your new profile, run:${NC}"
+for shell in "${SHELLS_TO_CONFIGURE[@]}"; do
+    if [ "$shell" = "zsh" ]; then
+        echo -e "${BLUE}  source ~/.zshrc${NC} (for zsh)"
+    else
+        echo -e "${BLUE}  source ~/.bashrc${NC} (for bash)"
+    fi
+done
 
 # Run icon test if available
 if [ -f "$SCRIPT_DIR/test-icons.sh" ]; then
