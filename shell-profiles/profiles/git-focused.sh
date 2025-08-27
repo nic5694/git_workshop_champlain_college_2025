@@ -198,7 +198,7 @@ if command -v fzf >/dev/null 2>&1; then
     export FZF_CTRL_T_OPTS="--style full \
         --border --padding 1,2 \
         --border-label ' Git Files ' --input-label ' Search ' --header-label ' File Info ' \
-        --preview 'if command -v bat >/dev/null 2>&1; then bat --color=always --style=numbers --line-range=:300 {}; else head -300 {}; fi' \
+        --preview 'if command -v batcat >/dev/null 2>&1; then batcat --color=always --style=numbers --line-range=:300 {}; elif command -v bat >/dev/null 2>&1; then bat --color=always --style=numbers --line-range=:300 {}; else head -300 {}; fi' \
         --bind 'result:transform-list-label:
             if [[ -z \$FZF_QUERY ]]; then
               echo \" \$FZF_MATCH_COUNT files \"
@@ -219,14 +219,26 @@ if command -v fzf >/dev/null 2>&1; then
     if [ -n "$ZSH_VERSION" ]; then
         if [ -f ~/.fzf.zsh ]; then
             source ~/.fzf.zsh
+        elif [ -f ~/.fzf/shell/key-bindings.zsh ]; then
+            source ~/.fzf/shell/key-bindings.zsh
         elif [ -f /usr/share/fzf/key-bindings.zsh ]; then
             source /usr/share/fzf/key-bindings.zsh
+        fi
+        # Ensure fzf completion is also loaded
+        if [ -f ~/.fzf/shell/completion.zsh ]; then
+            source ~/.fzf/shell/completion.zsh
         fi
     elif [ -n "$BASH_VERSION" ]; then
         if [ -f ~/.fzf.bash ]; then
             source ~/.fzf.bash
+        elif [ -f ~/.fzf/shell/key-bindings.bash ]; then
+            source ~/.fzf/shell/key-bindings.bash
         elif [ -f /usr/share/fzf/key-bindings.bash ]; then
             source /usr/share/fzf/key-bindings.bash
+        fi
+        # Ensure fzf completion is also loaded
+        if [ -f ~/.fzf/shell/completion.bash ]; then
+            source ~/.fzf/shell/completion.bash
         fi
     fi
     
