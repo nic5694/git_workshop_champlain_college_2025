@@ -197,25 +197,24 @@ if command -v fzf >/dev/null 2>&1; then
     fi
     
     # Enhanced fzf options with beautiful styling
-    export FZF_CTRL_T_OPTS="--style full \
-        --border --padding 1,2 \
-        --border-label ' Files ' --input-label ' Search ' --header-label ' File Info ' \
+    # Enhanced fzf styling (compatible with fzf 0.29+)
+    export FZF_CTRL_T_OPTS="--border --padding 1,2 \
+        --border-label ' Files ' --preview-window=right:50% \
         --preview 'if command -v bat >/dev/null 2>&1; then bat --color=always --style=numbers --line-range=:300 {}; else head -300 {}; fi' \
-        --bind 'result:transform-list-label:
-            if [[ -z \$FZF_QUERY ]]; then
-              echo \" \$FZF_MATCH_COUNT files \"
-            else
-              echo \" \$FZF_MATCH_COUNT matches for [\$FZF_QUERY] \"
-            fi
-            ' \
-        --bind 'focus:transform-preview-label:[[ -n {} ]] && printf \" Previewing [%s] \" {}' \
-        --bind 'focus:+transform-header:file --brief {} 2>/dev/null || echo \"No file selected\"' \
-        --bind 'ctrl-r:change-list-label( Reloading )+reload(sleep 1; if command -v fd >/dev/null 2>&1; then fd --type f --hidden --follow --exclude .git; else find . -type f -not -path \"*/\.git/*\" 2>/dev/null; fi)' \
-        --color 'border:#aaaaaa,label:#cccccc' \
-        --color 'preview-border:#9999cc,preview-label:#ccccff' \
-        --color 'list-border:#669966,list-label:#99cc99' \
-        --color 'input-border:#996666,input-label:#ffcccc' \
-        --color 'header-border:#6699cc,header-label:#99ccff'"
+        --bind 'ctrl-r:reload(if command -v fd >/dev/null 2>&1; then fd --type f --hidden --follow --exclude .git; else find . -type f -not -path \"*/\.git/*\" 2>/dev/null; fi)' \
+        --color 'border:#aaaaaa,preview-border:#9999cc'"
+    
+    # Enhanced options for newer fzf versions (0.48+)
+    if command -v fzf >/dev/null 2>&1 && fzf --version | grep -E "0\.([5-9][0-9]|[4-9][8-9])" >/dev/null 2>&1; then
+        export FZF_CTRL_T_OPTS="--style=full --border --padding 1,2 \
+            --border-label ' Files ' --input-label ' Search ' --header-label ' File Info ' \
+            --preview 'if command -v bat >/dev/null 2>&1; then bat --color=always --style=numbers --line-range=:300 {}; else head -300 {}; fi' \
+            --bind 'result:transform-list-label:if [[ -z \$FZF_QUERY ]]; then echo \" \$FZF_MATCH_COUNT files \"; else echo \" \$FZF_MATCH_COUNT matches for [\$FZF_QUERY] \"; fi' \
+            --bind 'focus:transform-preview-label:[[ -n {} ]] && printf \" Previewing [%s] \" {}' \
+            --bind 'focus:+transform-header:file --brief {} 2>/dev/null || echo \"No file selected\"' \
+            --bind 'ctrl-r:change-list-label( Reloading )+reload(sleep 1; if command -v fd >/dev/null 2>&1; then fd --type f --hidden --follow --exclude .git; else find . -type f -not -path \"*/\.git/*\" 2>/dev/null; fi)' \
+            --color 'border:#aaaaaa,label:#cccccc,preview-border:#9999cc,preview-label:#ccccff,list-border:#669966,list-label:#99cc99,input-border:#996666,input-label:#ffcccc,header-border:#6699cc,header-label:#99ccff'"
+    fi
     
     # Enhanced directory search
     export FZF_ALT_C_COMMAND="find . -type d -not -path '*/\.git/*' 2>/dev/null"

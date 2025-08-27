@@ -2,7 +2,15 @@
 # filepath: /workspaces/git_workshop_champlain_college_2025/shell-profiles/install.sh
 
 # Git Workshop Shell Profile Installer
-# This script installs shell profiles for the git workshop
+# This script installs enhanced shell profiles with modern fzf integration for the git workshop
+# 
+# Features:
+# - Latest fzf with Ctrl+T file finder, Ctrl+R history search, Alt+C directory finder
+# - Cross-platform support (Ubuntu, Debian, Fedora, Arch, macOS)
+# - Compatible with both bash and zsh
+# - Enhanced file previews with bat and fd integration
+# - Git-aware fuzzy finding in git-focused profile
+#
 # Usage: ./install.sh [profile_name] [--auto] [--minimal-deps]
 
 set -e
@@ -185,64 +193,139 @@ install_starship() {
 
 # Function to install fzf and related tools
 install_fzf() {
-    if ! command -v fzf >/dev/null 2>&1; then
-        echo -e "${BLUE}Installing fzf and related tools...${NC}"
+    echo -e "${BLUE}Installing latest fzf and related tools...${NC}"
+    
+    # Remove any existing fzf installation
+    if [ -d "$HOME/.fzf" ]; then
+        echo -e "${YELLOW}Removing existing fzf installation...${NC}"
+        rm -rf "$HOME/.fzf"
+    fi
+    
+    # Clone latest fzf from GitHub
+    echo -e "${BLUE}Cloning latest fzf from GitHub...${NC}"
+    if git clone --depth 1 https://github.com/junegunn/fzf.git "$HOME/.fzf"; then
+        cd "$HOME/.fzf"
         
-        # Install fzf
-        if [ -d "$HOME/.fzf" ]; then
-            rm -rf "$HOME/.fzf"
+        # Get the latest stable version
+        git fetch --tags >/dev/null 2>&1
+        latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "main")
+        if [ "$latest_tag" != "main" ]; then
+            echo -e "${BLUE}Switching to latest version: $latest_tag${NC}"
+            git checkout "$latest_tag" >/dev/null 2>&1
         fi
-        git clone --depth 1 https://github.com/junegunn/fzf.git "$HOME/.fzf" && \
-        "$HOME/.fzf/install" --all
         
-        # Install bat for better file previews
-        local distro=$(detect_distro)
-        case "$distro" in
-            ubuntu|debian|pop)
-                if ! command -v bat >/dev/null 2>&1 && ! command -v batcat >/dev/null 2>&1; then
-                    echo -e "${BLUE}Installing bat for file previews...${NC}"
-                    sudo apt install -y bat || true
-                    # Create bat symlink if it was installed as batcat
-                    if command -v batcat >/dev/null 2>&1 && ! command -v bat >/dev/null 2>&1; then
-                        sudo ln -sf /usr/bin/batcat /usr/local/bin/bat 2>/dev/null || true
-                    fi
+        # Install fzf with proper shell integration
+        echo -e "${BLUE}Installing fzf with shell integration...${NC}"
+        "$HOME/.fzf/install" --all --no-update-rc
+        
+        # Fix .fzf.zsh to prioritize new fzf binary in PATH
+        cat > "$HOME/.fzf.zsh" << 'EOF'
+# Setup fzf - prioritize latest version
+# ---------
+if [[ ! "$PATH" == */home/vscode/.fzf/bin* ]]; then
+  PATH="/home/vscode/.fzf/bin:${PATH}"
+fi
+
+# Load fzf shell integration
+if command -v fzf >/dev/null 2>&1; then
+  if fzf --zsh >/dev/null 2>&1; then
+    # Use modern integration for fzf 0.48+
+    source <(fzf --zsh)
+  else
+    # Fallback for older versions
+    [[ $- == *i* ]] && source "/home/vscode/.fzf/shell/completion.zsh" 2> /dev/null
+    source "/home/vscode/.fzf/shell/key-bindings.zsh"
+  fi
+fi
+EOF
+        
+        # Fix .fzf.bash to prioritize new fzf binary in PATH
+        cat > "$HOME/.fzf.bash" << 'EOF'
+# Setup fzf - prioritize latest version
+# ---------
+if [[ ! "$PATH" == */home/vscode/.fzf/bin* ]]; then
+  PATH="/home/vscode/.fzf/bin:${PATH}"
+fi
+
+# Load fzf shell integration
+if command -v fzf >/dev/null 2>&1; then
+  if fzf --bash >/dev/null 2>&1; then
+    # Use modern integration for fzf 0.48+
+    source <(fzf --bash)
+  else
+    # Fallback for older versions
+    [[ $- == *i* ]] && source "/home/vscode/.fzf/shell/completion.bash" 2> /dev/null
+    source "/home/vscode/.fzf/shell/key-bindings.bash"
+  fi
+fi
+EOF
+        
+        echo -e "${GREEN}✓ Latest fzf installed successfully${NC}"
+        echo -e "${BLUE}fzf version: $(~/.fzf/bin/fzf --version)${NC}"
+    else
+        echo -e "${RED}✗ Failed to clone fzf repository${NC}"
+        return 1
+    fi
+    
+    # Install bat for better file previews
+    local distro=$(detect_distro)
+    case "$distro" in
+        ubuntu|debian|pop)
+            if ! command -v bat >/dev/null 2>&1 && ! command -v batcat >/dev/null 2>&1; then
+                echo -e "${BLUE}Installing bat for file previews...${NC}"
+                sudo apt update >/dev/null 2>&1
+                sudo apt install -y bat || true
+                # Create bat symlink if it was installed as batcat
+                if command -v batcat >/dev/null 2>&1 && ! command -v bat >/dev/null 2>&1; then
+                    sudo ln -sf /usr/bin/batcat /usr/local/bin/bat 2>/dev/null || true
                 fi
-                ;;
-            fedora)
+            fi
+            ;;
+        fedora|rhel|centos)
+            if ! command -v bat >/dev/null 2>&1; then
+                echo -e "${BLUE}Installing bat for file previews...${NC}"
                 sudo dnf install -y bat || true
-                ;;
-            arch|manjaro)
+            fi
+            ;;
+        arch|manjaro)
+            if ! command -v bat >/dev/null 2>&1; then
+                echo -e "${BLUE}Installing bat for file previews...${NC}"
                 sudo pacman -S --noconfirm bat || true
-                ;;
-            *)
-                echo -e "${YELLOW}bat package not installed. File previews will use basic 'head' command${NC}"
-                ;;
-        esac
-        
-        # Install fd for better file finding (optional)
-        case "$distro" in
-            ubuntu|debian|pop)
+            fi
+            ;;
+        *)
+            echo -e "${YELLOW}bat package not available for this distribution. File previews will use basic 'head' command${NC}"
+            ;;
+    esac
+    
+    # Install fd for better file finding (optional)
+    case "$distro" in
+        ubuntu|debian|pop)
+            if ! command -v fd >/dev/null 2>&1 && ! command -v fdfind >/dev/null 2>&1; then
+                echo -e "${BLUE}Installing fd for enhanced file finding...${NC}"
                 sudo apt install -y fd-find || true
                 # Create fd symlink if it was installed as fdfind
                 if command -v fdfind >/dev/null 2>&1 && ! command -v fd >/dev/null 2>&1; then
                     sudo ln -sf /usr/bin/fdfind /usr/local/bin/fd 2>/dev/null || true
                 fi
-                ;;
-            fedora)
+            fi
+            ;;
+        fedora|rhel|centos)
+            if ! command -v fd >/dev/null 2>&1; then
+                echo -e "${BLUE}Installing fd for enhanced file finding...${NC}"
                 sudo dnf install -y fd-find || true
-                ;;
-            arch|manjaro)
+            fi
+            ;;
+        arch|manjaro)
+            if ! command -v fd >/dev/null 2>&1; then
+                echo -e "${BLUE}Installing fd for enhanced file finding...${NC}"
                 sudo pacman -S --noconfirm fd || true
-                ;;
-            *)
-                echo -e "${YELLOW}fd package not available, using find instead${NC}"
-                ;;
-        esac
-        
-        echo -e "${GREEN}✓ fzf and related tools installed${NC}"
-    else
-        echo -e "${GREEN}✓ fzf already installed${NC}"
-    fi
+            fi
+            ;;
+        *)
+            echo -e "${YELLOW}fd package not available for this distribution. Using standard find command${NC}"
+            ;;
+    esac
 }
 
 # Function to install fonts and icon support
@@ -437,17 +520,19 @@ ask_optional_components() {
         fi
     fi
     
-    # fzf
-    if ! command -v fzf >/dev/null 2>&1; then
-        if [ "$AUTO_MODE" = true ]; then
-            echo -e "${BLUE}Auto mode: Installing fzf${NC}"
-            install_fzf
+    # fzf - Always install/update to latest version for Ctrl+T functionality
+    if [ "$AUTO_MODE" = true ]; then
+        echo -e "${BLUE}Auto mode: Installing/updating fzf to latest version${NC}"
+        install_fzf
+    else
+        if command -v fzf >/dev/null 2>&1; then
+            echo -e "${YELLOW}fzf found. Update to latest version for enhanced Ctrl+T functionality? (y/n):${NC}"
         else
-            echo -e "${YELLOW}Install fzf for fuzzy finding and enhanced search? (y/n):${NC}"
-            read -r install_fzf_opt
-            if [[ "$install_fzf_opt" =~ ^[Yy]$ ]]; then
-                install_fzf
-            fi
+            echo -e "${YELLOW}Install fzf for fuzzy finding and enhanced Ctrl+T search? (y/n):${NC}"
+        fi
+        read -r install_fzf_opt
+        if [[ "$install_fzf_opt" =~ ^[Yy]$ ]]; then
+            install_fzf
         fi
     fi
 }
