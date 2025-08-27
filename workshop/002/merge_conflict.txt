@@ -1,3 +1,7 @@
 Hello from the main branch!
+<<<<<<< HEAD
 This is a line that will cause a conflict. Nicholas Martoccia 2131595
+=======
+This is a line that will cause a conflict. Cunningham Li 2231358
+>>>>>>> 0888c33 (Added conflict)
 Goodbye from the main branch!
