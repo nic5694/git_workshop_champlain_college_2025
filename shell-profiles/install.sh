@@ -193,7 +193,7 @@ install_fzf() {
             rm -rf "$HOME/.fzf"
         fi
         git clone --depth 1 https://github.com/junegunn/fzf.git "$HOME/.fzf" && \
-        "$HOME/.fzf/install" --all --no-bash --no-zsh --no-fish
+        "$HOME/.fzf/install" --all
         
         # Install bat for better file previews
         local distro=$(detect_distro)
@@ -268,18 +268,29 @@ install_fonts_and_icons() {
                 fonts-liberation \
                 fonts-noto-color-emoji \
                 ttf-ubuntu-font-family \
-                fontconfig-config || true
+                fontconfig-config \
+                unzip \
+                ca-certificates || true
             
             # Install Nerd Fonts (FiraCode Nerd Font)
             if [ ! -f "$HOME/.local/share/fonts/FiraCodeNerdFont-Regular.ttf" ]; then
                 echo -e "${BLUE}Installing FiraCode Nerd Font...${NC}"
                 mkdir -p "$HOME/.local/share/fonts"
                 cd /tmp
-                curl -fLo "FiraCode.zip" https://github.com/ryanoasis/nerd-fonts/releases/download/v3.1.1/FiraCode.zip
-                unzip -o FiraCode.zip -d "$HOME/.local/share/fonts/"
-                rm -f FiraCode.zip
-                fc-cache -fv
-                echo -e "${GREEN}✓ FiraCode Nerd Font installed${NC}"
+                
+                if curl -fLo "FiraCode.zip" https://github.com/ryanoasis/nerd-fonts/releases/download/v3.1.1/FiraCode.zip; then
+                    if command -v unzip >/dev/null 2>&1; then
+                        unzip -o FiraCode.zip -d "$HOME/.local/share/fonts/"
+                        rm -f FiraCode.zip
+                        fc-cache -fv 2>/dev/null || true
+                        echo -e "${GREEN}✓ FiraCode Nerd Font installed${NC}"
+                    else
+                        echo -e "${YELLOW}⚠ unzip not available, skipping Nerd Font installation${NC}"
+                        rm -f FiraCode.zip
+                    fi
+                else
+                    echo -e "${YELLOW}⚠ Failed to download FiraCode Nerd Font${NC}"
+                fi
             fi
             ;;
         fedora)
@@ -373,6 +384,14 @@ check_prerequisites() {
         install_package "curl"
     else
         echo -e "${GREEN}✓ curl/wget found${NC}"
+    fi
+    
+    # Check for unzip (needed for font installation)
+    if ! command -v unzip >/dev/null 2>&1; then
+        echo -e "${YELLOW}unzip not found. Installing...${NC}"
+        install_package "unzip"
+    else
+        echo -e "${GREEN}✓ unzip found${NC}"
     fi
     
     # Install fonts and icons for proper terminal display
