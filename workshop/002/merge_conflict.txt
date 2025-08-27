@@ -1,6 +1,3 @@
 Hello from the main branch!
-christian_james_lee
 This is a line that will cause a conflict. Christian 😍😍😍
-This is a line that will cause a conflict.
- local
 Goodbye from the main branch!
