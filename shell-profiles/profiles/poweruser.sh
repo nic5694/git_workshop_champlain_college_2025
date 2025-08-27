@@ -2,6 +2,15 @@
 # Power User Profile - Feature-rich configuration
 # Compatible with Bash and Zsh on Linux and macOS
 
+# Prevent issues when sourcing .bashrc from Zsh or vice versa
+# This profile is cross-shell compatible but warns about improper sourcing
+if [ -n "$ZSH_VERSION" ] && [[ "${(%):-%N}" == *".bashrc"* ]]; then
+    echo "Warning: You're sourcing .bashrc from Zsh. Consider using .zshrc instead."
+    echo "This profile works in both shells, but your .bashrc may have Bash-specific commands."
+elif [ -n "$BASH_VERSION" ] && [[ "${BASH_SOURCE[0]}" == *".zshrc"* ]]; then
+    echo "Warning: You're sourcing .zshrc from Bash. Consider using .bashrc instead."
+fi
+
 # Profile info
 export SHELL_PROFILE_NAME="poweruser"
 export SHELL_PROFILE_VERSION="1.0.0"
@@ -14,11 +23,15 @@ elif [ -n "$ZSH_VERSION" ]; then
 else
     _PROFILE_DIR="$(cd "$(dirname "$0" 2>/dev/null)" && pwd)"
 fi
-if [ -f "$_PROFILE_DIR/../developer.sh" ]; then
-    . "$_PROFILE_DIR/../developer.sh"
-elif [ -f "$_PROFILE_DIR/developer.sh" ]; then
+if [ -f "$_PROFILE_DIR/developer.sh" ]; then
     . "$_PROFILE_DIR/developer.sh"
+elif [ -f "$_PROFILE_DIR/../developer.sh" ]; then
+    . "$_PROFILE_DIR/../developer.sh"
 fi
+
+# Re-export profile info after loading base profile
+export SHELL_PROFILE_NAME="poweruser"
+export SHELL_PROFILE_VERSION="1.0.0"
 
 # Advanced aliases
 alias ll='ls -alF --color=auto'
@@ -174,19 +187,70 @@ gsync() {
     git rebase master
 }
 
-# Fuzzy finding with fzf
+# Enhanced fuzzy finding with fzf
 if command -v fzf >/dev/null 2>&1; then
-    # Key bindings
-    if [[ -n "$ZSH_VERSION" ]]; then
-        [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+    # Enhanced file search with fd or find fallback
+    if command -v fd >/dev/null 2>&1; then
+        export FZF_CTRL_T_COMMAND="fd --type f --hidden --follow --exclude .git"
     else
-        [ -f ~/.fzf.bash ] && source ~/.fzf.bash
+        export FZF_CTRL_T_COMMAND="find . -type f -not -path '*/\.git/*' 2>/dev/null"
     fi
     
-    # Git fzf functions
+    # Enhanced fzf options with beautiful styling
+    export FZF_CTRL_T_OPTS="--style full \
+        --border --padding 1,2 \
+        --border-label ' Files ' --input-label ' Search ' --header-label ' File Info ' \
+        --preview 'if command -v bat >/dev/null 2>&1; then bat --color=always --style=numbers --line-range=:300 {}; else head -300 {}; fi' \
+        --bind 'result:transform-list-label:
+            if [[ -z \$FZF_QUERY ]]; then
+              echo \" \$FZF_MATCH_COUNT files \"
+            else
+              echo \" \$FZF_MATCH_COUNT matches for [\$FZF_QUERY] \"
+            fi
+            ' \
+        --bind 'focus:transform-preview-label:[[ -n {} ]] && printf \" Previewing [%s] \" {}' \
+        --bind 'focus:+transform-header:file --brief {} 2>/dev/null || echo \"No file selected\"' \
+        --bind 'ctrl-r:change-list-label( Reloading )+reload(sleep 1; if command -v fd >/dev/null 2>&1; then fd --type f --hidden --follow --exclude .git; else find . -type f -not -path \"*/\.git/*\" 2>/dev/null; fi)' \
+        --color 'border:#aaaaaa,label:#cccccc' \
+        --color 'preview-border:#9999cc,preview-label:#ccccff' \
+        --color 'list-border:#669966,list-label:#99cc99' \
+        --color 'input-border:#996666,input-label:#ffcccc' \
+        --color 'header-border:#6699cc,header-label:#99ccff'"
+    
+    # Enhanced directory search
+    export FZF_ALT_C_COMMAND="find . -type d -not -path '*/\.git/*' 2>/dev/null"
+    export FZF_ALT_C_OPTS="--style full --border --border-label ' Directories ' \
+        --preview 'ls -la {}' \
+        --color 'border:#aaaaaa,label:#cccccc' \
+        --color 'preview-border:#9999cc,preview-label:#ccccff'"
+    
+    # Enhanced history search
+    export FZF_CTRL_R_OPTS="--style full --border --border-label ' Command History ' \
+        --preview 'echo {}' --preview-window up:3:hidden:wrap \
+        --bind 'ctrl-/:toggle-preview' \
+        --color 'border:#aaaaaa,label:#cccccc' \
+        --color 'preview-border:#9999cc,preview-label:#ccccff'"
+    
+    # Key bindings
+    if [[ -n "$ZSH_VERSION" ]]; then
+        if [ -f ~/.fzf.zsh ]; then
+            source ~/.fzf.zsh
+        elif [ -f /usr/share/fzf/key-bindings.zsh ]; then
+            source /usr/share/fzf/key-bindings.zsh
+        fi
+    else
+        if [ -f ~/.fzf.bash ]; then
+            source ~/.fzf.bash
+        elif [ -f /usr/share/fzf/key-bindings.bash ]; then
+            source /usr/share/fzf/key-bindings.bash
+        fi
+    fi
+    
+    # Enhanced Git fzf functions
     fgco() {
         local branch
-        branch=$(git branch --all | grep -v HEAD | sed "s/.* //" | sed "s#remotes/[^/]*/##" | sort -u | fzf)
+        branch=$(git branch --all | grep -v HEAD | sed "s/.* //" | sed "s#remotes/[^/]*/##" | sort -u | \
+            fzf --border --border-label ' Git Branches ' --preview 'git log --oneline --graph --date=short --pretty="format:%C(auto)%cd %h%d %s" {} | head -200')
         if [[ "$branch" != "" ]]; then
             git checkout "$branch"
         fi
@@ -194,13 +258,25 @@ if command -v fzf >/dev/null 2>&1; then
     
     fgshow() {
         git log --graph --color=always \
-            --format="%C(auto)%h%d %s %C(black)%C(bold)%cr" "$@" |
+            --format="%C(auto)%h%d %s %C(black)%C(bold)%cr" "$@" | \
         fzf --ansi --no-sort --reverse --tiebreak=index --bind=ctrl-s:toggle-sort \
+            --border --border-label ' Git Log ' \
+            --preview 'grep -o "[a-f0-9]\{7\}" <<< {} | head -1 | xargs git show --color=always' \
             --bind "ctrl-m:execute:
                       (grep -o '[a-f0-9]\{7\}' | head -1 |
                        xargs -I % sh -c 'git show --color=always % | less -R') << 'FZF-EOF'
                       {}
 FZF-EOF"
+    }
+    
+    # File search with preview
+    ff() {
+        local file
+        file=$(fzf --border --border-label ' File Search ' \
+            --preview 'if command -v bat >/dev/null 2>&1; then bat --color=always --style=numbers --line-range=:300 {}; else head -300 {}; fi')
+        if [[ -n "$file" ]]; then
+            $EDITOR "$file"
+        fi
     }
     
     alias gfco='fgco'
@@ -311,11 +387,21 @@ profile_help() {
     echo "  Enhanced Display: ll, la, l, lt, lS, lh (with exa/colors)"
     echo "  Modern Tools: cat→bat, grep→rg, ls→exa"
     echo "  Git Power: gaa, gap, gcaa, gdca, gdt, grb, grbi, grbf, gsync"
-    echo "  FZF Integration: fgco, fgshow (if fzf installed)"
+    echo "  FZF Integration: fgco, fgshow, ff (if fzf installed)"
+    echo "  FZF Keybindings: Ctrl+T (files), Ctrl+R (history), Alt+C (dirs)"
     echo "  System: df, du, free, top→htop, ports"
     echo "  Dev Tools: serve, jsonpp, urlencode, urldecode"
     echo "  Utilities: weather, cheat, transfer, grename, gsync"
     echo "  Bookmarks: ~projects, ~downloads, ~documents (zsh)"
 }
+
+# Initialize Starship prompt if available
+if command -v starship >/dev/null 2>&1; then
+    if [ -n "$ZSH_VERSION" ]; then
+        eval "$(starship init zsh)"
+    elif [ -n "$BASH_VERSION" ]; then
+        eval "$(starship init bash)"
+    fi
+fi
 
 echo "Power User shell profile loaded (v$SHELL_PROFILE_VERSION) with advanced features"

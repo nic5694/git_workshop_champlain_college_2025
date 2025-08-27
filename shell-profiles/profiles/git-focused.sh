@@ -3,7 +3,19 @@
 
 # Git-focused shell profile
 # Loads minimal profile first, then adds Git enhancements
+
+# Prevent issues when sourcing .bashrc from Zsh or vice versa
+# This profile is cross-shell compatible but warns about improper sourcing
+if [ -n "$ZSH_VERSION" ] && [[ "${(%):-%N}" == *".bashrc"* ]]; then
+    echo "Warning: You're sourcing .bashrc from Zsh. Consider using .zshrc instead."
+    echo "This profile works in both shells, but your .bashrc may have Bash-specific commands."
+elif [ -n "$BASH_VERSION" ] && [[ "${BASH_SOURCE[0]}" == *".zshrc"* ]]; then
+    echo "Warning: You're sourcing .zshrc from Bash. Consider using .bashrc instead."
+fi
+
+# Profile info
 export SHELL_PROFILE_NAME="git-focused"
+export SHELL_PROFILE_VERSION="1.0.0"
 
 # Load minimal profile as base (robust for Bash and Zsh)
 if [ -n "$BASH_VERSION" ]; then
@@ -13,11 +25,15 @@ elif [ -n "$ZSH_VERSION" ]; then
 else
     _PROFILE_DIR="$(cd "$(dirname "$0" 2>/dev/null)" && pwd)"
 fi
-if [ -f "$_PROFILE_DIR/../minimal.sh" ]; then
-    . "$_PROFILE_DIR/../minimal.sh"
-elif [ -f "$_PROFILE_DIR/minimal.sh" ]; then
+if [ -f "$_PROFILE_DIR/minimal.sh" ]; then
     . "$_PROFILE_DIR/minimal.sh"
+elif [ -f "$_PROFILE_DIR/../minimal.sh" ]; then
+    . "$_PROFILE_DIR/../minimal.sh"
 fi
+
+# Re-export profile info after loading base profile
+export SHELL_PROFILE_NAME="git-focused"
+export SHELL_PROFILE_VERSION="1.0.0"
 
 # Load color themes
 if [ -f "$_PROFILE_DIR/../themes/bash-colors.sh" ]; then
@@ -167,6 +183,65 @@ if [ -n "$BASH_VERSION" ]; then
     export SRC_DIR="${_BOOKMARK_SRC}"
 fi
 
+# Enhanced fzf configuration for Git workflows
+if command -v fzf >/dev/null 2>&1; then
+    # Git-aware file search - prefers git files in git repos, falls back to all files
+    if git rev-parse --git-dir > /dev/null 2>&1; then
+        export FZF_CTRL_T_COMMAND="git ls-files --cached --others --exclude-standard"
+    elif command -v fd >/dev/null 2>&1; then
+        export FZF_CTRL_T_COMMAND="fd --type f --hidden --follow --exclude .git"
+    else
+        export FZF_CTRL_T_COMMAND="find . -type f -not -path '*/\.git/*' 2>/dev/null"
+    fi
+    
+    # Git-focused fzf styling
+    export FZF_CTRL_T_OPTS="--style full \
+        --border --padding 1,2 \
+        --border-label ' Git Files ' --input-label ' Search ' --header-label ' File Info ' \
+        --preview 'if command -v bat >/dev/null 2>&1; then bat --color=always --style=numbers --line-range=:300 {}; else head -300 {}; fi' \
+        --bind 'result:transform-list-label:
+            if [[ -z \$FZF_QUERY ]]; then
+              echo \" \$FZF_MATCH_COUNT files \"
+            else
+              echo \" \$FZF_MATCH_COUNT matches for [\$FZF_QUERY] \"
+            fi
+            ' \
+        --bind 'focus:transform-preview-label:[[ -n {} ]] && printf \" Previewing [%s] \" {}' \
+        --bind 'focus:+transform-header:file --brief {} 2>/dev/null || echo \"No file selected\"' \
+        --bind 'ctrl-r:change-list-label( Reloading )+reload(sleep 1; git ls-files --cached --others --exclude-standard 2>/dev/null || find . -type f -not -path \"*/\.git/*\" 2>/dev/null)' \
+        --color 'border:#6699cc,label:#99ccff' \
+        --color 'preview-border:#9999cc,preview-label:#ccccff' \
+        --color 'list-border:#669966,list-label:#99cc99' \
+        --color 'input-border:#996666,input-label:#ffcccc' \
+        --color 'header-border:#6699cc,header-label:#99ccff'"
+    
+    # Source fzf key bindings if available
+    if [ -n "$ZSH_VERSION" ]; then
+        if [ -f ~/.fzf.zsh ]; then
+            source ~/.fzf.zsh
+        elif [ -f /usr/share/fzf/key-bindings.zsh ]; then
+            source /usr/share/fzf/key-bindings.zsh
+        fi
+    elif [ -n "$BASH_VERSION" ]; then
+        if [ -f ~/.fzf.bash ]; then
+            source ~/.fzf.bash
+        elif [ -f /usr/share/fzf/key-bindings.bash ]; then
+            source /usr/share/fzf/key-bindings.bash
+        fi
+    fi
+    
+    # Git-specific fzf function
+    gfco() {
+        local branch
+        branch=$(git branch --all | grep -v HEAD | sed "s/.* //" | sed "s#remotes/[^/]*/##" | sort -u | \
+            fzf --border --border-label ' Git Branches ' \
+                --preview 'git log --oneline --graph --date=short --pretty="format:%C(auto)%cd %h%d %s" {} | head -10')
+        if [[ "$branch" != "" ]]; then
+            git checkout "$branch"
+        fi
+    }
+fi
+
 # Git help function
 git_help() {
     echo -e "${BLUE}Git Workshop - Available Commands:${NC}"
@@ -199,8 +274,21 @@ git_help() {
     echo "  gdiscard      - Discard all changes"
     echo "  gclean        - Clean untracked files"
     echo
+    echo -e "${GREEN}Enhanced Features:${NC}"
+    echo "  ~src          - Bookmark to ~/Documents/GitHub (Zsh)"
+    echo "  src           - Jump to source directory (Bash)"
+    echo "  gfco          - Fuzzy Git branch checkout (if fzf installed)"
+    echo "  Ctrl+T        - Fuzzy file search (if fzf installed)"
+    echo
 }
 
-
+# Initialize Starship prompt if available  
+if command -v starship >/dev/null 2>&1; then
+    if [ -n "$ZSH_VERSION" ]; then
+        eval "$(starship init zsh)"
+    elif [ -n "$BASH_VERSION" ]; then
+        eval "$(starship init bash)"
+    fi
+fi
 
 echo "Git-focused profile loaded! Type 'git_help' for available commands."

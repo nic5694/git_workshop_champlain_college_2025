@@ -2,6 +2,15 @@
 # Developer Profile - Balanced setup for daily development
 # Compatible with Bash and Zsh on Linux and macOS
 
+# Prevent issues when sourcing .bashrc from Zsh or vice versa
+# This profile is cross-shell compatible but warns about improper sourcing
+if [ -n "$ZSH_VERSION" ] && [[ "${(%):-%N}" == *".bashrc"* ]]; then
+    echo "Warning: You're sourcing .bashrc from Zsh. Consider using .zshrc instead."
+    echo "This profile works in both shells, but your .bashrc may have Bash-specific commands."
+elif [ -n "$BASH_VERSION" ] && [[ "${BASH_SOURCE[0]}" == *".zshrc"* ]]; then
+    echo "Warning: You're sourcing .zshrc from Bash. Consider using .bashrc instead."
+fi
+
 # Profile info
 export SHELL_PROFILE_NAME="developer"
 export SHELL_PROFILE_VERSION="1.0.0"
@@ -14,11 +23,15 @@ elif [ -n "$ZSH_VERSION" ]; then
 else
     _PROFILE_DIR="$(cd "$(dirname "$0" 2>/dev/null)" && pwd)"
 fi
-if [ -f "$_PROFILE_DIR/../minimal.sh" ]; then
-    . "$_PROFILE_DIR/../minimal.sh"
-elif [ -f "$_PROFILE_DIR/minimal.sh" ]; then
+if [ -f "$_PROFILE_DIR/minimal.sh" ]; then
     . "$_PROFILE_DIR/minimal.sh"
+elif [ -f "$_PROFILE_DIR/../minimal.sh" ]; then
+    . "$_PROFILE_DIR/../minimal.sh"
 fi
+
+# Re-export profile info after loading base profile
+export SHELL_PROFILE_NAME="developer"
+export SHELL_PROFILE_VERSION="1.0.0"
 
 # Development aliases
 alias c='clear'
@@ -197,6 +210,59 @@ elif [ -n "$BASH_VERSION" ]; then
     shopt -s checkwinsize
 fi
 
+# Enhanced fzf configuration
+if command -v fzf >/dev/null 2>&1; then
+    # Use fd or find for file listing - works in any directory
+    if command -v fd >/dev/null 2>&1; then
+        export FZF_CTRL_T_COMMAND="fd --type f --hidden --follow --exclude .git"
+    else
+        export FZF_CTRL_T_COMMAND="find . -type f -not -path '*/\.git/*' 2>/dev/null"
+    fi
+    
+    # Enhanced fzf options with beautiful styling
+    export FZF_CTRL_T_OPTS="--style full \
+        --border --padding 1,2 \
+        --border-label ' Files ' --input-label ' Search ' --header-label ' File Info ' \
+        --preview 'if command -v bat >/dev/null 2>&1; then bat --color=always --style=numbers --line-range=:300 {}; else head -300 {}; fi' \
+        --bind 'result:transform-list-label:
+            if [[ -z \$FZF_QUERY ]]; then
+              echo \" \$FZF_MATCH_COUNT files \"
+            else
+              echo \" \$FZF_MATCH_COUNT matches for [\$FZF_QUERY] \"
+            fi
+            ' \
+        --bind 'focus:transform-preview-label:[[ -n {} ]] && printf \" Previewing [%s] \" {}' \
+        --bind 'focus:+transform-header:file --brief {} 2>/dev/null || echo \"No file selected\"' \
+        --bind 'ctrl-r:change-list-label( Reloading )+reload(sleep 1; if command -v fd >/dev/null 2>&1; then fd --type f --hidden --follow --exclude .git; else find . -type f -not -path \"*/\.git/*\" 2>/dev/null; fi)' \
+        --color 'border:#aaaaaa,label:#cccccc' \
+        --color 'preview-border:#9999cc,preview-label:#ccccff' \
+        --color 'list-border:#669966,list-label:#99cc99' \
+        --color 'input-border:#996666,input-label:#ffcccc' \
+        --color 'header-border:#6699cc,header-label:#99ccff'"
+    
+    # Directory search
+    export FZF_ALT_C_COMMAND="find . -type d -not -path '*/\.git/*' 2>/dev/null"
+    export FZF_ALT_C_OPTS="--border --border-label ' Directories ' --preview 'ls -la {}'"
+    
+    # History search
+    export FZF_CTRL_R_OPTS="--border --border-label ' Command History ' --preview 'echo {}' --preview-window up:3:hidden:wrap --bind 'ctrl-/:toggle-preview'"
+    
+    # Source fzf key bindings if available
+    if [ -n "$ZSH_VERSION" ]; then
+        if [ -f ~/.fzf.zsh ]; then
+            source ~/.fzf.zsh
+        elif [ -f /usr/share/fzf/key-bindings.zsh ]; then
+            source /usr/share/fzf/key-bindings.zsh
+        fi
+    elif [ -n "$BASH_VERSION" ]; then
+        if [ -f ~/.fzf.bash ]; then
+            source ~/.fzf.bash
+        elif [ -f /usr/share/fzf/key-bindings.bash ]; then
+            source /usr/share/fzf/key-bindings.bash
+        fi
+    fi
+fi
+
 # Enable completion
 if [ -n "$ZSH_VERSION" ]; then
     autoload -U compinit && compinit
@@ -217,9 +283,19 @@ profile_help() {
     echo "  Enhanced Navigation: home, cd.., ....., cdp, cdd"
     echo "  File Operations: mkdir, mv, cp, rm, extract, mktar, mkzip"
     echo "  Git Enhanced: gb, gba, gbd, gcam, gca, gnb, gundo, gclean"
+    echo "  FZF Integration: Ctrl+T (files), Ctrl+R (history), Alt+C (dirs)"
     echo "  System: ps, psgrep, psmem, pscpu, myip, ping"
     echo "  Utilities: c, h, path, now, nowdate, o, oo"
     echo "  Functions: extract, mktar, mkzip, gnb, gbd, grename, gundo, gclean"
 }
+
+# Initialize Starship prompt if available
+if command -v starship >/dev/null 2>&1; then
+    if [ -n "$ZSH_VERSION" ]; then
+        eval "$(starship init zsh)"
+    elif [ -n "$BASH_VERSION" ]; then
+        eval "$(starship init bash)"
+    fi
+fi
 
 echo "Developer shell profile loaded (v$SHELL_PROFILE_VERSION) with Git integration"

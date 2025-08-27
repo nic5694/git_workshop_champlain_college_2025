@@ -4,6 +4,44 @@ Transform your terminal into a powerful, beautiful, and efficient workspace! Thi
 
 ## Quick Installation
 
+### Prerequisites
+
+The installer will automatically detect your system and install required packages:
+- **Zsh** (if not present)
+- **Git** (if not present) 
+- **curl/wget** (for downloading components)
+
+Optional components (will be offered during installation):
+- **Oh My Zsh** - Enhanced Zsh framework
+- **Starship** - Modern cross-shell prompt (auto-configured in developer/poweruser/git-focused profiles)
+- **fzf** - Fuzzy finder for enhanced search (auto-configured with advanced styling)
+
+### Interactive Installation
+
+```bash
+# Clone this repository and navigate to shell-profiles
+cd shell-profiles
+
+# Run the interactive installer (detects system and installs prerequisites)
+./install.sh
+
+# Or install a specific profile directly
+./install.sh git-focused
+```
+
+### Automated Installation
+
+```bash
+# Install with all optional components (no prompts)
+./install.sh git-focused --auto
+
+# Install with minimal dependencies only
+./install.sh minimal --minimal-deps
+
+# Get help
+./install.sh --help
+```
+
 ### Windows Users (WSL/Git Bash/MSYS2)
 
 If you're on Windows and get a "bad interpreter" error with `^M` characters:
@@ -13,16 +51,6 @@ If you're on Windows and get a "bad interpreter" error with `^M` characters:
 ./fix-line-endings.sh
 
 # Then run the installer
-./install.sh
-```
-
-### Unix/Linux/macOS
-
-```bash
-# Clone this repository and navigate to shell-profiles
-cd shell-profiles
-
-# Run the interactive installer
 ./install.sh
 ```
 
@@ -69,6 +97,8 @@ Balanced setup for daily development work.
 - Syntax highlighting
 - Auto-completion
 - Modern prompt with Git status
+- Auto-configures Starship if installed
+- Enhanced fzf integration
 
 **Best for:** Day-to-day development, coding projects
 
@@ -77,8 +107,9 @@ Feature-rich setup with all the bells and whistles.
 
 **Features:**
 - Advanced Git workflows
-- Fuzzy finding (fzf)
+- Fuzzy finding (fzf) with enhanced styling
 - Enhanced history search
+- Auto-configures Starship if installed
 - Custom functions
 - Beautiful prompt
 - Auto-suggestions
@@ -94,6 +125,9 @@ Specialized for Git-heavy workflows.
 - Commit helpers
 - Merge conflict tools
 - Git-aware prompt
+- Auto-configures Starship if installed
+- Git-aware fzf integration
+- Directory bookmarks (~src → ~/Documents/GitHub)
 
 **Best for:** Git power users, DevOps engineers
 
