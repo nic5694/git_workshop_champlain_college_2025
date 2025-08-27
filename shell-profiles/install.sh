@@ -3,8 +3,41 @@
 
 # Git Workshop Shell Profile Installer
 # This script installs shell profiles for the git workshop
+# Usage: ./install.sh [profile_name] [--auto] [--minimal-deps]
 
 set -e
+
+# Parse arguments
+AUTO_MODE=false
+MINIMAL_DEPS=false
+PROFILE_ARG=""
+
+for arg in "$@"; do
+    case $arg in
+        --auto)
+            AUTO_MODE=true
+            ;;
+        --minimal-deps)
+            MINIMAL_DEPS=true
+            ;;
+        --help|-h)
+            echo "Usage: $0 [profile_name] [--auto] [--minimal-deps]"
+            echo "  profile_name: minimal, developer, poweruser, or git-focused"
+            echo "  --auto: Skip interactive prompts for optional components"
+            echo "  --minimal-deps: Only install essential dependencies"
+            exit 0
+            ;;
+        -*)
+            echo "Unknown option: $arg"
+            exit 1
+            ;;
+        *)
+            if [ -z "$PROFILE_ARG" ]; then
+                PROFILE_ARG="$arg"
+            fi
+            ;;
+    esac
+done
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -30,6 +63,245 @@ NC='\033[0m'
 echo -e "${BLUE}Git Workshop Shell Profile Installer${NC}"
 echo "========================================="
 
+# Function to detect distribution
+detect_distro() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        echo "$ID"
+    elif command -v lsb_release >/dev/null 2>&1; then
+        lsb_release -si | tr '[:upper:]' '[:lower:]'
+    elif [ -f /etc/redhat-release ]; then
+        echo "rhel"
+    elif [ -f /etc/debian_version ]; then
+        echo "debian"
+    else
+        echo "unknown"
+    fi
+}
+
+# Function to install packages based on distribution
+install_package() {
+    local package="$1"
+    local distro=$(detect_distro)
+    
+    echo -e "${BLUE}Installing $package...${NC}"
+    
+    case "$distro" in
+        ubuntu|debian|pop)
+            if sudo apt update && sudo apt install -y "$package"; then
+                echo -e "${GREEN}✓ $package installed successfully${NC}"
+            else
+                echo -e "${RED}✗ Failed to install $package${NC}"
+                return 1
+            fi
+            ;;
+        fedora)
+            if sudo dnf install -y "$package"; then
+                echo -e "${GREEN}✓ $package installed successfully${NC}"
+            else
+                echo -e "${RED}✗ Failed to install $package${NC}"
+                return 1
+            fi
+            ;;
+        centos|rhel|rocky|almalinux)
+            if sudo yum install -y "$package" || sudo dnf install -y "$package"; then
+                echo -e "${GREEN}✓ $package installed successfully${NC}"
+            else
+                echo -e "${RED}✗ Failed to install $package${NC}"
+                return 1
+            fi
+            ;;
+        arch|manjaro)
+            if sudo pacman -S --noconfirm "$package"; then
+                echo -e "${GREEN}✓ $package installed successfully${NC}"
+            else
+                echo -e "${RED}✗ Failed to install $package${NC}"
+                return 1
+            fi
+            ;;
+        opensuse*)
+            if sudo zypper install -y "$package"; then
+                echo -e "${GREEN}✓ $package installed successfully${NC}"
+            else
+                echo -e "${RED}✗ Failed to install $package${NC}"
+                return 1
+            fi
+            ;;
+        alpine)
+            if sudo apk add "$package"; then
+                echo -e "${GREEN}✓ $package installed successfully${NC}"
+            else
+                echo -e "${RED}✗ Failed to install $package${NC}"
+                return 1
+            fi
+            ;;
+        *)
+            echo -e "${YELLOW}Unknown distribution ($distro). Please install $package manually.${NC}"
+            echo -e "${YELLOW}Common commands:${NC}"
+            echo -e "  ${YELLOW}Ubuntu/Debian:${NC} sudo apt install $package"
+            echo -e "  ${YELLOW}Fedora:${NC} sudo dnf install $package"
+            echo -e "  ${YELLOW}CentOS/RHEL:${NC} sudo yum install $package"
+            echo -e "  ${YELLOW}Arch:${NC} sudo pacman -S $package"
+            return 1
+            ;;
+    esac
+}
+
+# Function to install Oh My Zsh
+install_oh_my_zsh() {
+    if [ ! -d "$HOME/.oh-my-zsh" ]; then
+        echo -e "${BLUE}Installing Oh My Zsh...${NC}"
+        if command -v curl >/dev/null 2>&1; then
+            sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+        elif command -v wget >/dev/null 2>&1; then
+            sh -c "$(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O -)" "" --unattended
+        else
+            echo -e "${RED}Error: curl or wget required to install Oh My Zsh${NC}"
+            return 1
+        fi
+        echo -e "${GREEN}✓ Oh My Zsh installed${NC}"
+    else
+        echo -e "${GREEN}✓ Oh My Zsh already installed${NC}"
+    fi
+}
+
+# Function to install Starship prompt
+# Function to install Starship prompt
+install_starship() {
+    if ! command -v starship >/dev/null 2>&1; then
+        echo -e "${BLUE}Installing Starship prompt...${NC}"
+        if command -v curl >/dev/null 2>&1; then
+            curl -sS https://starship.rs/install.sh | sh -s -- -y
+        else
+            echo -e "${YELLOW}Please install Starship manually: https://starship.rs/guide/#step-1-install-starship${NC}"
+            return 1
+        fi
+        echo -e "${GREEN}✓ Starship installed and will be auto-configured${NC}"
+        echo -e "${BLUE}Note: Starship will be automatically initialized in developer, poweruser, and git-focused profiles${NC}"
+    else
+        echo -e "${GREEN}✓ Starship already installed and will be auto-configured${NC}"
+    fi
+}
+
+# Function to install fzf
+install_fzf() {
+    if ! command -v fzf >/dev/null 2>&1; then
+        echo -e "${BLUE}Installing fzf...${NC}"
+        if [ -d "$HOME/.fzf" ]; then
+            rm -rf "$HOME/.fzf"
+        fi
+        git clone --depth 1 https://github.com/junegunn/fzf.git "$HOME/.fzf" && \
+        "$HOME/.fzf/install" --all --no-bash --no-zsh --no-fish
+        echo -e "${GREEN}✓ fzf installed${NC}"
+    else
+        echo -e "${GREEN}✓ fzf already installed${NC}"
+    fi
+}
+
+# Check and install prerequisites
+check_prerequisites() {
+    echo -e "\n${BLUE}Checking prerequisites...${NC}"
+    
+    # Check for Zsh
+    if ! command -v zsh >/dev/null 2>&1; then
+        echo -e "${YELLOW}Zsh not found. Installing...${NC}"
+        install_package "zsh"
+        
+        # Offer to change default shell
+        if command -v zsh >/dev/null 2>&1; then
+            echo -e "${YELLOW}Would you like to make Zsh your default shell? (y/n):${NC}"
+            read -r make_default
+            if [[ "$make_default" =~ ^[Yy]$ ]]; then
+                if command -v chsh >/dev/null 2>&1; then
+                    chsh -s "$(which zsh)"
+                    echo -e "${GREEN}✓ Default shell changed to Zsh${NC}"
+                    echo -e "${YELLOW}Please log out and back in for the change to take effect${NC}"
+                else
+                    echo -e "${YELLOW}chsh not available. Please change default shell manually${NC}"
+                fi
+            fi
+        fi
+    else
+        echo -e "${GREEN}✓ Zsh found${NC}"
+    fi
+    
+    # Check for Git
+    if ! command -v git >/dev/null 2>&1; then
+        echo -e "${YELLOW}Git not found. Installing...${NC}"
+        install_package "git"
+    else
+        echo -e "${GREEN}✓ Git found${NC}"
+    fi
+    
+    # Check for curl or wget
+    if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
+        echo -e "${YELLOW}curl/wget not found. Installing curl...${NC}"
+        install_package "curl"
+    else
+        echo -e "${GREEN}✓ curl/wget found${NC}"
+    fi
+    
+    echo -e "${GREEN}✓ Basic prerequisites checked${NC}"
+}
+
+# Ask about optional components
+ask_optional_components() {
+    if [ "$MINIMAL_DEPS" = true ]; then
+        echo -e "${YELLOW}Minimal dependencies mode - skipping optional components${NC}"
+        return 0
+    fi
+    
+    echo -e "\n${BLUE}Optional components:${NC}"
+    
+    # Oh My Zsh
+    if command -v zsh >/dev/null 2>&1 && [ ! -d "$HOME/.oh-my-zsh" ]; then
+        if [ "$AUTO_MODE" = true ]; then
+            echo -e "${BLUE}Auto mode: Installing Oh My Zsh${NC}"
+            install_oh_my_zsh
+        else
+            echo -e "${YELLOW}Install Oh My Zsh for enhanced Zsh experience? (y/n):${NC}"
+            read -r install_omz
+            if [[ "$install_omz" =~ ^[Yy]$ ]]; then
+                install_oh_my_zsh
+            fi
+        fi
+    fi
+    
+    # Starship
+    if ! command -v starship >/dev/null 2>&1; then
+        if [ "$AUTO_MODE" = true ]; then
+            echo -e "${BLUE}Auto mode: Installing Starship${NC}"
+            install_starship
+        else
+            echo -e "${YELLOW}Install Starship for a modern cross-shell prompt? (y/n):${NC}"
+            read -r install_star
+            if [[ "$install_star" =~ ^[Yy]$ ]]; then
+                install_starship
+            fi
+        fi
+    fi
+    
+    # fzf
+    if ! command -v fzf >/dev/null 2>&1; then
+        if [ "$AUTO_MODE" = true ]; then
+            echo -e "${BLUE}Auto mode: Installing fzf${NC}"
+            install_fzf
+        else
+            echo -e "${YELLOW}Install fzf for fuzzy finding and enhanced search? (y/n):${NC}"
+            read -r install_fzf_opt
+            if [[ "$install_fzf_opt" =~ ^[Yy]$ ]]; then
+                install_fzf
+            fi
+        fi
+    fi
+}
+
+# Run prerequisite checks
+check_prerequisites
+ask_optional_components
+
+echo -e "\n${BLUE}Proceeding with profile installation...${NC}"
+
 # Detect shell
 SHELL_TYPE=""
 if [ -n "$ZSH_VERSION" ]; then
@@ -47,12 +319,22 @@ fi
 echo -e "Detected shell: ${GREEN}$SHELL_TYPE${NC}"
 echo -e "Configuration file: ${GREEN}$SHELL_RC${NC}"
 
+# Check for cross-shell configuration issues
+if [ "$SHELL_TYPE" = "zsh" ] && [ -f "$HOME/.bashrc" ]; then
+    if grep -q "shopt\|bash_completion" "$HOME/.bashrc" 2>/dev/null; then
+        echo -e "\n${YELLOW}Warning: Your .bashrc contains Bash-specific commands.${NC}"
+        echo -e "${YELLOW}If you source .bashrc from Zsh, you may see 'command not found: shopt' errors.${NC}"
+        echo -e "${BLUE}Our profiles are cross-shell compatible and will be installed to $SHELL_RC${NC}"
+        echo -e "${BLUE}Tip: Don't run 'source ~/.bashrc' in Zsh. Use 'source ~/.zshrc' instead.${NC}"
+    fi
+fi
+
 # Available profiles
 PROFILES=(
-    "minimal:Basic shell improvements"
-    "developer:Enhanced development environment"
-    "poweruser:Advanced features and shortcuts"
-    "git-focused:Git-specific enhancements"
+    "minimal:Basic shell improvements (no external dependencies)"
+    "developer:Enhanced development environment (optional: fzf, starship)"
+    "poweruser:Advanced features and shortcuts (optional: fzf, starship)"
+    "git-focused:Git-specific enhancements (optional: fzf)"
 )
 
 # Show available profiles
@@ -101,7 +383,7 @@ install_profile() {
 }
 
 # Interactive mode
-if [ $# -eq 0 ]; then
+if [ -z "$PROFILE_ARG" ]; then
     echo -e "\n${YELLOW}Choose a profile to install (1-${#PROFILES[@]}):${NC}"
     read -r choice
     
@@ -114,8 +396,7 @@ if [ $# -eq 0 ]; then
     fi
 else
     # Command line mode
-    profile_name="$1"
-    install_profile "$profile_name"
+    install_profile "$PROFILE_ARG"
 fi
 
 echo -e "\n${GREEN}Installation complete!${NC}"
