@@ -1,3 +1,3 @@
 Hello from the main branch!
-This is a line that will cause a conflict. Nicholas Martoccia 2131595
+This is a line that will cause a conflict. Nicholas Martoccia 2131595, Louis Caron 2331111
 Goodbye from the main branch!
